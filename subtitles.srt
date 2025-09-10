@@ -1,0 +1,215 @@
+1
+00:00:00,000 --> 00:00:02,320
+ Airlines are intentionally screwing you over.
+
+2
+00:00:02,320 --> 00:00:03,840
+ And they're making billions doing it.
+
+3
+00:00:03,840 --> 00:00:06,240
+ They sell tickets for seats that don't exist.
+
+4
+00:00:06,240 --> 00:00:08,280
+ They create guaranteed conflict.
+
+5
+00:00:08,280 --> 00:00:11,760
+ And they've turned public confrontations into a business strategy.
+
+6
+00:00:11,760 --> 00:00:16,160
+ In 2017, United Airlines literally dragged a doctor off Flight 3411.
+
+7
+00:00:16,160 --> 00:00:20,160
+ Video went viral. Millions saw it. Stock price dipped.
+
+8
+00:00:20,160 --> 00:00:22,280
+ But wait... here's what doesn't make sense.
+
+9
+00:00:22,280 --> 00:00:25,400
+ Why would an industry built on customer satisfaction do this?
+
+10
+00:00:25,400 --> 00:00:27,320
+ Deliberately. Systematically.
+
+11
+00:00:27,320 --> 00:00:30,040
+ Delta openly admits to overbooking flights.
+
+12
+00:00:30,040 --> 00:00:32,920
+ Southwest's own reports show they oversell constantly.
+
+13
+00:00:32,920 --> 00:00:34,640
+ It's not a mistake. It's math.
+
+14
+00:00:34,640 --> 00:00:37,120
+ Brilliant, ruthless, psychological math.
+
+15
+00:00:37,120 --> 00:00:40,760
+ And once you see it, you'll understand every crowded gate you've ever been in.
+
+16
+00:00:40,760 --> 00:00:44,040
+ Let's start with the first principle. The No-Show Probability.
+
+17
+00:00:44,040 --> 00:00:47,040
+ Airlines don't see empty seats. They see lost revenue.
+
+18
+00:00:47,040 --> 00:00:51,560
+ On any given flight, data shows 5-10% of people just... don't show up.
+
+19
+00:00:51,560 --> 00:00:54,880
+ Business meeting cancelled. Missed connection. Flat tire.
+
+20
+00:00:54,880 --> 00:00:56,360
+ So they bet against you.
+
+21
+00:00:56,360 --> 00:00:59,560
+ They sell 105 tickets for 100 seats.
+
+22
+00:00:59,560 --> 00:01:02,080
+ Statistically, it works. Almost always.
+
+23
+00:01:02,080 --> 00:01:04,920
+ But when it doesn't... that's where principle two kicks in.
+
+24
+00:01:04,920 --> 00:01:07,160
+ The Cost-Benefit Analysis of Your Anger.
+
+25
+00:01:07,160 --> 00:01:11,880
+ Yes, seriously. They've calculated the exact value of your frustration.
+
+26
+00:01:11,880 --> 00:01:15,800
+ An empty seat on a flight from New York to LA? That's a $500 loss.
+
+27
+00:01:15,800 --> 00:01:17,200
+ But bumping one passenger?
+
+28
+00:01:17,200 --> 00:01:20,600
+ They have to compensate you. Maybe a $800 travel voucher.
+
+29
+00:01:20,600 --> 00:01:22,720
+ Wait, that seems like a loss too, right?
+
+30
+00:01:22,720 --> 00:01:24,400
+ Ah, but here's the devilish part.
+
+31
+00:01:24,400 --> 00:01:26,600
+ Principle three: The Anchoring Effect.
+
+32
+00:01:26,600 --> 00:01:30,080
+ That $800 voucher costs the airline far less than $800.
+
+33
+00:01:30,080 --> 00:01:33,360
+ They anchor you to the price of your ticket—maybe $300.
+
+34
+00:01:33,360 --> 00:01:35,640
+ So $800 feels huge. A win!
+
+35
+00:01:35,640 --> 00:01:39,000
+ But they pay that voucher out over time. At a high discount rate.
+
+36
+00:01:39,000 --> 00:01:42,360
+ Its real cost to them? Maybe $400 in future revenue.
+
+37
+00:01:42,360 --> 00:01:45,280
+ They'd rather risk a $400 cost than a guaranteed $500 loss.
+
+38
+00:01:45,280 --> 00:01:49,120
+ It's a calculated gamble. And the math is overwhelmingly on their side.
+
+39
+00:01:49,120 --> 00:01:51,360
+ For every one person they drag off a plane...
+
+40
+00:01:51,360 --> 00:01:54,640
+ ...thousands of flights take off perfectly full, making them millions.
+
+41
+00:01:54,640 --> 00:01:57,920
+ The final psychological trick? Diffusion of Responsibility.
+
+42
+00:01:57,920 --> 00:02:01,000
+ The gate agent isn't the villain. They're just following 'policy'.
+
+43
+00:02:01,000 --> 00:02:03,400
+ The system is designed to absorb your anger.
+
+44
+00:02:03,400 --> 00:02:06,520
+ You're not mad at Delta. You're mad at the person offering you a voucher.
+
+45
+00:02:06,520 --> 00:02:09,320
+ It's corporate judo. They use your energy against you.
+
+46
+00:02:09,320 --> 00:02:11,320
+ And this pattern repeats everywhere.
+
+47
+00:02:11,320 --> 00:02:13,240
+ Restaurants overbook reservations.
+
+48
+00:02:13,240 --> 00:02:14,880
+ Hotels oversell rooms.
+
+49
+00:02:14,880 --> 00:02:16,600
+ They all play the odds against you.
+
+50
+00:02:16,600 --> 00:02:18,600
+ So the next time you're at a crowded gate...
+
+51
+00:02:18,600 --> 00:02:20,600
+ You're not witnessing a logistical failure.
+
+52
+00:02:20,600 --> 00:02:24,040
+ You're watching a brilliantly cold, psychological algorithm play out in real time.
+
+53
+00:02:24,040 --> 00:02:26,160
+ You're not a customer. You're a data point.
+
+54
+00:02:26,160 --> 00:02:29,360
+ And for the airlines, that data point is worth a fortune.
