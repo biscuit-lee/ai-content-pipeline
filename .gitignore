@@ -1,1 +1,10 @@
 .env
+*.mp3
+*.wav
+*.mp4
+venv
+Why_Luxury_Brands_Intentionally_Make_Their_Stores_/
+images/
+output/
+save/
+*.txt
