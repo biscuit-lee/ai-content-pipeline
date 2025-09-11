@@ -72,18 +72,21 @@ class Agent:
 
         res = self.deserialize_response(completion.choices[0].message.content)
         return res
-    
+
     def deserialize_response(self, response) -> dict:
 
         try:
             if '```json' in response:
                 # Extract the JSON part from the response
                 response = response.split('```json')[1].split('```')[0].strip()
-
-            return json.loads(response)
+            if not isinstance(response, dict):
+                return json.loads(response)
+            return response
         except json.JSONDecodeError:
             print(f"Failed to parse JSON: {response}")
-            return response
+            return None
+        
+
 
 # ---------------- CONFIG ----------------
 API_KEY = os.getenv("ELEVENLABS_API_KEY")
@@ -102,38 +105,89 @@ import itertools
 from prompts import business_psych_ideas
 class IdeaGeneratorBiz(Agent):
     def __init__(self):
-        pass
+        self.TOPICS_FILE = "generated_topics.txt"  # File to store used topic titles
+
+    
     def generate_idea(self):
+        """Return JSON with a new business psychology topic idea, avoiding duplicates."""
 
-        """Return json 
-        
-        res : 
-        
-    {"topic_title": "Why Netflix Cancels Shows Right When They Get Good",
-    "hook_angle": "Netflix spends millions making shows, then cancels them at their peak popularity",
-    "central_mystery": "Why would a company destroy their most valuable content when viewers are most engaged?",
-    "key_examples": [
-        "The OA - canceled after massive fan campaign",
-        "Sense8 - expensive production, devoted fanbase, canceled after 2 seasons",
-        "Teenage Bounty Hunters - 100% Rotten Tomatoes, still canceled"
-    ],
-    "psychological_principles": [
-        "Sunk cost fallacy exploitation",
-        "Loss aversion in subscription retention",
-        "Novelty bias in content consumption"
-    ],
-    "viral_potential_score": int,
-    "why_it_works": str}
-        
-        """
-        prompt = business_psych_ideas
+        # --- Step 1: Read previously generated topic titles ---
+        used_titles = set()
+        if os.path.exists(self.TOPICS_FILE):
+            with open(self.TOPICS_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    used_titles.add(line.strip())
+
+        # --- Step 2: Inject used titles into prompt ---
+        prompt = f"{business_psych_ideas}\n\nPreviously generated titles (avoid repeating these): {list(used_titles)}"
+
+        print(f"PROMPT IDEA TO LLM   \n\n{prompt}\n\n")
+
+        # --- Step 3: Ask LLM ---
         res = self.ask_llm(prompt)
+        print(f"Respond idea from llm \n\n{res}\n\n")
 
+        # --- Step 4: Extract the topic_title and save it ---
+        try:
+            # Convert string response to dict if needed
+            if isinstance(res, str):
+                res_dict = json.loads(res)
+            else:
+                res_dict = res
+
+            new_title = res_dict.get("topic_title")
+            if new_title and new_title not in used_titles:
+                with open(self.TOPICS_FILE, "a", encoding="utf-8") as f:
+                    f.write(new_title + "\n")
+        except Exception as e:
+            print(f"Error saving topic title: {e}")
 
         return res
-        
-        
 
+
+
+class IdeaGeneratorBiz2(Agent):
+    def __init__(self):
+        self.selections = {}
+
+    def generate_prompt_from_selections(self):
+        """Generate AI prompt using the interactive selections"""
+        if not self.selections:
+            return "No selections made yet!"
+            
+        prompt = (
+            f"Generate a YouTube story idea with these specifications:\n\n"
+            f"FORMAT: {self.selections['format']['name']} ({self.selections['format']['description']})\n"
+            f"Example hook: {self.selections['format']['example_hook']}\n\n"
+            f"STYLE: {self.selections['style']['name']} (Use when: {self.selections['style']['use_when']})\n"
+            f"LENGTH: {self.selections['length']['duration']} (Pros: {self.selections['length']['pros']}, Cons: {self.selections['length']['cons']})\n\n"
+            f"CATEGORY: {self.selections['category']['name']} (Appeal: {self.selections['category']['appeal']})\n"
+            f"Settings: {', '.join(self.selections['category']['settings'])}\n\n"
+            f"NARRATOR: {self.selections['narrator']['age_group']} (Voice: {self.selections['narrator']['voice']})\n"
+            f"Typical situations: {', '.join(self.selections['narrator']['situations'])}\n"
+            f"Vulnerability: {self.selections['narrator']['vulnerability']}\n\n"
+            f"EMOTIONAL TONE: {self.selections['emotional_tone']['name']} ({self.selections['emotional_tone']['description']})\n"
+            f"Best for: {self.selections['emotional_tone']['best_for']}\n\n"
+            f"VIRAL ELEMENT: {self.selections['viral_element']}\n\n"
+            f"TARGET SPECS:\n"
+            f"• Hook timing: {self.story_experiments['optimal_specs']['hook_timing']}\n"
+            f"• Tension beats: {self.story_experiments['optimal_specs']['tension_beats']}\n"
+            f"• Resolution: {self.story_experiments['optimal_specs']['resolution']}\n\n"
+            f"Create a compelling story title and description that would make viewers click. "
+            f"Only provide the title, idea and description not the whole story and all the important parameters that was given to you above, becuase your response will be given to a writer, make the writer understand everything and fulfil the requirements above"
+        )
+        
+        return {
+            "prompt": prompt,
+            "format_name": self.selections['format'],   
+            "style_name": self.selections['style'],       
+            "length_duration": self.selections['length'], 
+            "category_name": self.selections['category'], 
+            "narrator": self.selections['narrator'],     
+            "tone_name": self.selections['emotional_tone'], 
+            "viral_element": self.selections['viral_element'] 
+        }
+        
 
 class IdeaGenerator(Agent):
     def __init__(self):
@@ -426,21 +480,8 @@ class Writer(Agent):
 
     def get_lines(self):
         return self.script_lines
-    
-    def deserialize_response(self, response) -> dict:
-
-        try:
-            if '```json' in response:
-                # Extract the JSON part from the response
-                response = response.split('```json')[1].split('```')[0].strip()
-
-            return json.loads(response)
-        except json.JSONDecodeError:
-            print(f"Failed to parse JSON: {response}")
-            return None
         
-    
-    def get_promtpt(self, genre,type_story="narration"):
+    def get_prompt(self, genre,type_story="narration"):
         if type_story == "narration":
             prompt = prompts.prompt_narration
         elif type_story == "act":
@@ -459,6 +500,81 @@ class Writer(Agent):
         
         return prompt.format(genre=genre)
     
+    def get_section_variables(self, section):
+            """
+            Returns only the variables needed for each specific section.
+            """
+            section_variables = {
+                "hook": ["topic_title", "hook_angle", "central_mystery"],
+                "central_mystery": ["central_mystery", "key_examples"], 
+                "psychology": ["psychological_principles", "why_it_works"],
+                "impact": ["key_examples", "psychological_principles"],
+                "business": ["key_examples", "why_it_works"],
+                "payoff": ["topic_title", "why_it_works"]
+            }
+            return section_variables.get(section, [])
+    def format_section_prompt(self, section, topic_data):
+            """
+            Format prompt with only relevant variables for the section.
+            """
+            prompt_template = self.get_section_prompt(section)
+            section_vars = self.get_section_variables(section)
+            
+            # Create kwargs dict with only needed variables
+            kwargs = {var: topic_data[var] for var in section_vars if var in topic_data}
+            
+            return prompt_template.format(**kwargs)
+    
+
+    SECTIONS = ["hook", "central_mystery", "psychology", "business", "payoff"]
+
+    def generate_script_sectioned(self, topic_data, type="narration"):
+        """
+        Generates the full script section by section.
+        """
+        full_script = {"Characters": {"NARRATOR": "MAN1"}, "story": []}
+
+        for section in self.SECTIONS:
+        # Use the new method that handles variable mapping
+            prompt = self.format_section_prompt(section, topic_data)
+            # Generate section content (your existing LLM call logic)
+            #section_content = self.generate_section_content(prompt, section)
+
+            """ prompt = prompt_template.format(
+                topic_title=topic_data["topic_title"],
+                hook_angle=topic_data["hook_angle"],
+                central_mystery=topic_data["central_mystery"],
+                key_examples=topic_data["key_examples"],
+                psychological_principles=topic_data["psychological_principles"],
+                why_it_works=topic_data["why_it_works"]
+            ) """
+
+            print(f"\n--- Generating section: {section} ---\n")
+            response = self.ask_llm(prompt)
+            section_json = self.deserialize_response(response)
+            if section_json:
+                full_script["story"].extend(section_json["story"])
+            else:
+                print(f"Failed to generate {section} section")
+
+        self.script_lines = full_script["story"]
+        return full_script
+
+    def get_section_prompt(self, section):
+        """
+        Returns section-specific prompt template.
+        """
+        if section == "hook":
+            return prompts.prompt_business_hook
+        elif section == "central_mystery":
+            return prompts.prompt_business_mystery
+        elif section == "psychology":
+            return prompts.prompt_business_psychology
+        elif section == "business":
+            return prompts.prompt_business_application
+        elif section == "payoff":
+            return prompts.prompt_business_payoff
+    """ 
     def generate_script(self, type,genre="reddit style story relationship"):
         prompt = self.get_promtpt(genre, type_story=type)
 
@@ -488,7 +604,7 @@ class Writer(Agent):
             return response
         else:
             print("Failed to generate script.")
-            return None
+            return None """
     
     def add_line(self, speaker, line):
         self.script_lines.append((speaker, line))
@@ -503,18 +619,6 @@ class Director(Agent):
         self.llm_model = "deepseek/deepseek-chat-v3.1:free"
         self.download_dir = "images"
     
-    
-    def deserialize_response(self, response) -> dict:
-
-        try:
-            if '```json' in response:
-                # Extract the JSON part from the response
-                response = response.split('```json')[1].split('```')[0].strip()
-
-            return json.loads(response)
-        except json.JSONDecodeError:
-            print(f"[{self.name}] Failed to parse JSON: {response}")
-            return None
     
     def load_srt_file(self, srt_file="subtitles.srt"):
         srt_file = "subtitles.srt"
@@ -610,7 +714,7 @@ class Director(Agent):
                     clips.append(clip)
 
         
-        clips_with_zoom = []
+        """ clips_with_zoom = []
 
         # Add zoom effect to each clip
         for clip in clips:
@@ -625,10 +729,10 @@ class Director(Agent):
                 Resize(smooth_zoom)
             ]).with_position('center')
             
-            clips_with_zoom.append(zoomed_clip)
+            clips_with_zoom.append(zoomed_clip) """
 
 
-        final_video = CompositeVideoClip(clips_with_zoom)
+        final_video = CompositeVideoClip(clips)
         final_video.write_videofile(video_file, fps=24, codec="libx264", audio_codec="aac")
 
 
@@ -712,7 +816,7 @@ class Editor(Agent):
         return duration
 
 
-    def analyze_script(self, script_text: dict):
+    def analyze_script(self, script_text: dict, subtitle_output_path="subtitles.srt"):
         """
         Analyze the script and return structured data.
         script_text: dict with keys "Characters" and "story"
@@ -735,7 +839,7 @@ class Editor(Agent):
 
         return script_lines
 
-    def create_srt(script_lines, audio_durations, output_file="subtitles.srt"):
+    def create_srt(script_lines, audio_durations, output_file):
         """
         Creates an .srt subtitle file from script lines and their audio durations.
 
@@ -757,10 +861,10 @@ class Editor(Agent):
             srt_entries.append(f"{i}\n{start} --> {end}\n{speaker}: {line}\n")
             current_time += duration
 
-        with open(output_file, "w") as f:
+        with open(subtitle_output_path, "w") as f:
             f.write("\n".join(srt_entries))
 
-        print(f"✅ Subtitles saved as {output_file}")
+        print(f"✅ Subtitles saved as {subtitle_output_path}")
 
     def generate_audio(self, script_lines, output_dir="voicelines", srt_file="subtitles.srt"):
 
@@ -1113,7 +1217,7 @@ if __name__ == "__main__":
     res_gen["id"] = 1
 
     """
-    questions = [
+    """ questions = [
         inquirer.List(
             'narration_type',
             message="Choose Narration type",
@@ -1127,7 +1231,7 @@ if __name__ == "__main__":
         )
     ]
     answers = inquirer.prompt(questions)
-    narration_type = answers['narration_type']
+    narration_type = answers['narration_type'] """
 
 
     """ save_to_csv(res_gen)
@@ -1136,33 +1240,14 @@ if __name__ == "__main__":
     genre = generator.ask_llm(prompt) """
     
 
-    """ generator = IdeaGeneratorBiz()
+    generator = IdeaGeneratorBiz()
     idea = validate_step(
         generator.generate_idea(),
-        regenerate_func=generator.generate_idea()) """
+        regenerate_func=generator.generate_idea)
+    
 
-    idea = """
-    {
-        "topic_title": "Why Airlines Overbook Flights They Know Will Be Full",
-        "hook_angle": "Airlines intentionally sell more tickets than seats exist, creating guaranteed conflict and customer anger",
-        "central_mystery": "Why would an industry built on customer satisfaction deliberately create situations that lead to public confrontations and forced compensation?",
-        "key_examples": [
-            "United Airlines Flight 3411 dragging incident (2017)",
-            "Delta's systematic overbooking statistics",
-            "Southwest's public overbooking disclosure reports"
-        ],
-        "psychological_principles": [
-            "Statistical exploitation of no-show probability",
-            "Cost-benefit analysis of angry customers vs empty seats",
-            "Anchoring effect of base ticket price vs compensation cost",
-            "Diffusion of responsibility in oversold situations"
-        ],
-        "viral_potential_score": 9,
-        "why_it_works": "Nearly every adult has experienced flight overbooking, reveals brilliant statistical manipulation, creates immediate pattern recognition for travel, triggers strong emotional response about being treated as a statistic"
-    }
-    """
-
-    idea = json.loads(idea)
+    if not isinstance(idea,dict):
+        idea = json.loads(idea)
     writer = Writer()
     """ script = validate_step(
         writer.generate_script(genre=story_genre,type="narration"),
@@ -1170,7 +1255,7 @@ if __name__ == "__main__":
         genre=story_genre
     ) """
 
-    script = writer.generate_script(genre=idea, type=narration_type)
+    script = writer.generate_script_sectioned(topic_data=idea, type="business")
 
     editor = Editor(VOICE_IDS)
     """ script_lines = validate_step(
@@ -1178,8 +1263,18 @@ if __name__ == "__main__":
         regenerate_func=editor.analyze_script,
         script=script
     ) """
+    new_topic_name = idea["topic_title"].strip()[:50].replace(" ", "_")
+    new_topic_folder = os.path.join(os.getcwd(), new_topic_name)
 
-    script_lines = editor.analyze_script(script)
+    # Create the folder if it doesn't exist
+    os.makedirs(new_topic_folder, exist_ok=True)
+
+    # Full path for the subtitle file inside the new topic folder
+    subtitle_output_path = os.path.join(new_topic_folder, "subtitles.srt")
+
+    # Pass this path to your analyze_script function
+    script_lines = editor.analyze_script(script, subtitle_output_path=subtitle_output_path)
+
     print(f"SCRIPT LINES \n\n {script_lines} \n\n\n")
 
     """ audio_files = validate_step(
@@ -1191,7 +1286,13 @@ if __name__ == "__main__":
 
     audio_files = editor.generate_audio(script_lines, output_dir="output")
 
-    merged_audio = editor.merge_audio(audio_files, final_output="multi_voice_story.mp3")
+
+
+    audio_file_name = idea["topic_title"].strip()[:50] + ".mp3"
+    audio_file_name = audio_file_name.replace(" ","_")
+    save_file_path = os.path.join(new_topic_folder, audio_file_name)
+
+    merged_audio = editor.merge_audio(audio_files, final_output=save_file_path )
     validate_step(merged_audio)  # You could just check if it's OK
 
     director = Director()

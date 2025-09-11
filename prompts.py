@@ -6,7 +6,6 @@ niches = ["relationship betrayal",
 "dating app horror story",
 "roommate from hell"
 ]
-
 example_AITA = """
 My brother in-law (Sammy) lost his home shortly after his divorce 10 months ago. He moved in with us and brought his twin daughters (Olivia & Sloane18) with him a couple of months ago. His sister (my wife) and I have one daughter (Zoey 16) and she and her cousins aren't close but get along fine.
 
@@ -197,6 +196,728 @@ Ending that explains everything perfectly
 
 Remember: The goal is to make viewers feel like they're hearing a true account from someone who lived through something genuinely unsettling. Every detail should serve either authenticity or tension."""
 
+prompt_dialogue = """
+You are creating a dialogue-driven {genre} story for a viral YouTube channel. Focus on explosive conversations and character conflicts that keep viewers engaged.
+
+**DIALOGUE OPTIMIZATION FOR YOUTUBE:**
+- IMMEDIATE CONFLICT: Characters argue/confront from the first line
+- RAPID-FIRE EXCHANGES: Quick back-and-forth that builds tension
+- REVELATION DROPS: Characters reveal secrets through dialogue
+- EMOTIONAL PEAKS: Moments of anger, betrayal, shock, or realization
+- QUOTABLE LINES: Memorable phrases viewers will comment about
+
+**RETENTION HOOKS:**
+- Start in the middle of a heated argument
+- Each character response should escalate or reveal something new
+- Use interruptions, denials, and "gotcha" moments
+- Include phrases like "You want to know the truth?" "I can't believe you did this"
+- Build to a dramatic confrontation or revelation
+
+**TRENDING DIALOGUE SCENARIOS:**
+- Confronting a cheating partner
+- Family members revealing long-held secrets
+- Friends discovering betrayal
+- Workplace confrontations about unfair treatment
+- Roommates/neighbors having explosive arguments
+
+**PACING:** Each line under 15 words. Rapid exchanges with emotional punches.
+
+**CHARACTER DYNAMICS:** Create clear conflict between characters with opposing goals/secrets.
+
+
+**JSON FORMAT:**
+{{
+    "Characters": {{"ALEX": "WOMAN1", "JORDAN": "MAN1", "TAYLOR": "WOMAN2"}},
+    "story": [
+        {{"speaker": "ALEX", "line": "I found the messages, Jordan. All of them."}},
+        {{"speaker": "JORDAN", "line": "What messages? I don't know what you're talking about."}},
+        {{"speaker": "ALEX", "line": "Don't lie to me! Taylor, tell him what you told me yesterday."}}
+    ]
+}}
+
+**DIALOGUE STYLE:** Natural, emotional, with subtext. Characters should feel like real people in crisis situations.
+"""
+
+
+
+
+
+
+business_psych_ideas = """
+You are a viral content strategist specializing in finding business psychology topics that will captivate YouTube audiences. Your job is to identify counterintuitive business decisions that seem illogical but reveal fascinating psychological strategies.
+VIRAL TOPIC FORMULA:
+The Contradiction: Find business practices that seem stupid/counterproductive but are actually brilliant
+The Mystery: Why successful companies do things that appear to hurt their business
+The Psychology: Reveal the hidden psychological principles driving these decisions
+TOPIC CATEGORIES THAT GO VIRAL:
+Tech Company Paradoxes:
+
+Why Apple removes features people love
+How Google makes money from "free" products
+Why social media apps make themselves addictive then promote "digital wellness"
+
+Streaming/Entertainment Psychology:
+
+Why Netflix cancels popular shows
+How Disney creates artificial scarcity with "vault" releases
+Why TikTok shows you content from accounts you don't follow
+
+Retail Mind Games:
+
+Why stores put expensive items at eye level
+How subscription services make canceling difficult
+Why "limited time offers" never actually end
+
+Corporate Manipulation Tactics:
+
+Why companies create problems then sell solutions
+How brands use fear of missing out (FOMO)
+Why customer service is intentionally frustrating
+
+WHAT MAKES A TOPIC VIRAL:
+Relatability: Everyone has experienced this but never understood why
+Counterintuitive: Goes against common sense/logic
+Specific Examples: Can name exact companies and situations
+Pattern Recognition: Once explained, viewers see it everywhere
+Emotional Response: Makes people feel manipulated/enlightened
+TOPIC GENERATION PROCESS:
+Step 1: Identify the Paradox
+Find a well-known business practice that seems illogical:
+
+"Why does [Company] do [Thing] when it obviously hurts [Expected Outcome]?"
+Look for practices that consumers complain about but companies keep doing
+
+Step 2: Validate the Mystery
+Ensure the topic has these elements:
+
+Multiple specific, named examples from different companies
+Clear contradiction between logical expectation and actual practice
+Measurable business success despite seemingly bad strategy
+
+Step 3: Confirm Psychological Depth
+The explanation should involve:
+
+At least 2-3 psychological principles/biases
+Both conscious strategy and subconscious consumer response
+Broader implications beyond just one company
+
+Step 4: Test Viral Potential
+Ask yourself:
+
+Would this make someone say "I never thought about it that way"?
+Can viewers immediately think of examples in their own life?
+Does this reveal a pattern they'll notice everywhere after watching?
+
+HIGH-PERFORMING TOPIC FORMATS:
+"Why [Company] Does [Counterintuitive Thing]"
+
+For example:
+
+Why McDonald's ice cream machines are always broken
+Why airlines overbook flights they know are full
+Why video games cost $60 but have $100 in additional content
+
+"The Psychology Behind [Business Practice]"
+
+The psychology behind subscription box addiction
+Why "free trials" that require credit cards
+How loyalty programs manipulate your spending behavior
+
+"How [Industry] Tricks Your Brain"
+
+How dating apps keep you single (but engaged)
+Why food delivery apps show "surge pricing"
+How streaming services hook you with incomplete series
+
+CURRENT TRENDING TOPICS TO EXPLORE:
+Post-Pandemic Business Changes:
+
+Why remote work companies are forcing return to office
+How subscription services exploded during lockdown
+Why delivery apps are more expensive than before
+
+AI and Tech Disruption:
+
+Why companies claim AI will replace jobs but keep hiring
+How social media algorithms decide what goes viral
+Why tech companies give away AI tools for "free"
+
+Economic Psychology:
+
+Why companies raise prices during inflation (beyond just costs)
+How "shrinkflation" psychologically works better than price increases
+Why luxury brands become more expensive during recessions
+
+OUTPUT FORMAT:
+Return exactly ONE topic in this JSON format, The json format must be VALID JSON:
+{
+    "topic_title": "Why Netflix Cancels Shows Right When They Get Good",
+    "hook_angle": "Netflix spends millions making shows, then cancels them at their peak popularity",
+    "central_mystery": "Why would a company destroy their most valuable content when viewers are most engaged?",
+    "key_examples": [
+        "The OA - canceled after massive fan campaign",
+        "Sense8 - expensive production, devoted fanbase, canceled after 2 seasons",
+        "Teenage Bounty Hunters - 100% Rotten Tomatoes, still canceled"
+    ],
+    "psychological_principles": [
+        "Sunk cost fallacy exploitation",
+        "Loss aversion in subscription retention",
+        "Novelty bias in content consumption"
+    ],
+    "viral_potential_score": 9,
+    "why_it_works": "Everyone has experienced this frustration, reveals calculated manipulation of viewer psychology, pattern recognition applies to all streaming services"
+}
+TOPIC VALIDATION CHECKLIST:
+✅ Specific Examples: Can name 3+ real companies/situations
+✅ Counter-Intuitive: Goes against obvious business logic
+✅ Relatable: Most viewers have experienced this personally
+✅ Educational: Teaches actionable psychology principles
+✅ Pattern Recognition: Viewers will notice this everywhere after
+✅ Emotional Hook: Creates "I can't believe they do this" feeling
+✅ Current Relevance: Applies to businesses operating today
+AVOID THESE TOPICS:
+
+Obvious business strategies everyone understands
+Conspiracy theories without evidence
+Topics requiring extensive background knowledge
+One-off situations that don't reveal broader patterns
+Practices that are clearly illegal/unethical without psychological interest
+
+Make SURE that the topics that you are suggest are based on reality and facts
+SUCCESS METRICS FOR TOPICS:
+High Viral Potential (8-10):
+
+Multiple companies using same psychological strategy
+Clear contradiction between expectation and reality
+Immediate "aha moment" when explained
+Applicable across multiple industries
+
+Medium Potential (6-7):
+
+Good psychological insights but more niche
+Requires some setup to understand the contradiction
+Interesting but not immediately relatable to everyone
+
+Low Potential (1-5):
+
+Obvious explanations or widely known strategies
+Limited to single company or industry
+No clear psychological principles involved
+
+GOAL: Generate topics that make viewers think "I never realized companies were manipulating my psychology in this specific way, and now I can't unsee it everywhere."
+Be creative
+Avoid talking about Airline overbooking
+You must provide valid json, so use double quotes instead of single qoutes
+"""
+
+
+
+" MUST NEED MANUAL FACT CHECK"
+
+prompt_business_hook = """
+VIRAL HOOK GENERATOR - First 60 Seconds
+
+You are creating the opening hook for a viral business psychology explainer video. Choose the hook style that best fits the topic:
+
+HOOK STYLE OPTIONS:
+
+1. OBSERVABLE PATTERN OPENER:
+"Open [specific app] right now and try this experiment. You'll notice [specific behavior/design choice]. Now try it on [second app] - same thing. And [third app] - identical pattern. This isn't coincidence."
+
+2. PERSONAL EXPERIENCE OPENER:
+"I just [relatable frustrating experience]. And as I'm [dealing with aftermath], I realized something insane about what just happened that applies to every single person watching this..."
+
+3. CONTRADICTION OPENER:
+"Every [type of company] claims they want to [stated goal], but if you look at their actual design choices, they're doing the complete opposite. Here's the proof..."
+
+REQUIRED ELEMENTS:
+✅ Observable behavior viewers can immediately verify
+✅ Multiple named companies showing same pattern  
+✅ Personal relatability moment
+✅ Clear contradiction that seems illogical
+✅ Promise of revealing hidden psychology
+
+AVOID:
+❌ Specific statistics or percentages
+❌ Internal company metrics
+❌ Unverifiable claims
+❌ Industry revenue numbers
+
+JSON OUTPUT:
+{
+    "hook_style_chosen": "[chosen style]",
+    "characters": {"NARRATOR": "MAN1"},
+    "story": [
+        {"speaker": "NARRATOR", "line": "[Hook opener]"},
+        {"speaker": "NARRATOR", "line": "[Personal stakes]"},
+        {"speaker": "NARRATOR", "line": "[The contradiction]"},
+        {"speaker": "NARRATOR", "line": "[Transition promise]"}
+    ]
+}
+
+"""
+
+prompt_business_mystery = """
+CENTRAL MYSTERY BUILDER - Minutes 1-3
+
+REQUIRED STRUCTURE:
+
+1. HISTORICAL CONTEXT (60-120 seconds):
+"These [current practices] aren't necessarily groundbreaking. In fact, [modern system] is basically a digital version of [historical equivalent] from [time period]."
+
+Compare old vs new:
+- How the old system worked (simple, clear process)
+- Why it disappeared (specific limitations)  
+- How new version seems better (apparent improvements)
+- The trap: "The only problem is..."
+
+2. CULTURAL ADOPTION PATTERN (120-150 seconds):
+"And this approach has become everywhere because [practice] has seen explosive adoption, going from a niche thing to completely dominating how we [activity]. Nearly everyone now [behavior change]."
+
+3. CULTURAL FORCES (150-180 seconds):
+"But this wasn't happening randomly. It's actually part of three major cultural shifts..."
+
+List exactly 3 observable cultural trends:
+- First: [trend with clear examples]
+- Second: [trend with clear examples]
+- Third: [trend with clear examples]
+
+"Combine all of that with [demographic vulnerability], and you have the perfect conditions..."
+
+FOCUS ON:
+✅ Observable cultural shifts
+✅ Clear before/after comparisons
+✅ Behaviors everyone can recognize
+✅ Historical parallels that make sense
+
+AVOID:
+❌ Specific growth percentages
+❌ Revenue projections  
+❌ Unverifiable market data
+
+"""
+
+prompt_business_psychology = """
+PSYCHOLOGY BREAKDOWN GENERATOR - Minutes 3-7
+
+REQUIRED STRUCTURE:
+
+1. THE CORE QUESTION (180-210 seconds):
+"But why is this even a problem? If [companies] aren't obviously charging you for [thing], how are they actually manipulating you?"
+
+2. BEFORE/AFTER COMPARISON (210-270 seconds):
+"To understand this, compare the old way versus the new way..."
+
+Traditional: [clear, honest process]
+Modern: [seemingly better but with hidden psychological hooks]
+
+3. PSYCHOLOGICAL MECHANISMS (270-390 seconds):
+"Companies have mastered psychological manipulation through [number] specific techniques:"
+
+For each principle:
+- Scientific name: "What psychologists call [term]"
+- Simple explanation with everyday metaphor
+- Specific application viewers can test
+- "Have you ever noticed..." recognition moment
+- Observable evidence instead of statistics
+
+4. DESIGN EVIDENCE (390-420 seconds):
+"These aren't accidents. Look at the actual design choices:"
+- Specific UI elements (colors, button placement, etc.)
+- Pre-selected options
+- Notification timing
+- Visual hierarchy tricks
+
+FOCUS ON:
+✅ Established psychological principles
+✅ Observable design decisions
+✅ Testable examples
+✅ Recognition moments
+
+AVOID:
+❌ Specific user percentages
+❌ Internal company research claims
+❌ Unverifiable behavioral statistics
+"""
+
+prompt_business_application = """
+BUSINESS MODEL EXPOSÉ - Minutes 7-10
+
+REQUIRED STRUCTURE:
+
+1. REVENUE STREAMS (420-480 seconds):
+"So how do these companies actually profit from this psychological manipulation?"
+
+List revenue streams with general ranges:
+"First... Second... Third... And finally..."
+
+Use language like:
+- "A significant portion of revenue"
+- "Industry-standard commission rates" 
+- "Premium subscriptions that most users"
+- "Data partnerships worth substantial amounts"
+
+2. REALISTIC EXAMPLE (480-540 seconds):
+"Let's walk through a real example everyone can relate to..."
+
+Use round, believable numbers:
+"Say you're buying a $50 [item]..."
+- Option 1: Pay now (straightforward)
+- Option 2: Credit card (mention typical APR ranges)
+- Option 3: Installments (break down the psychology)
+
+3. USER TESTIMONY PATTERN (540-570 seconds):
+"You can find countless examples of people saying things like..."
+[Paraphrase common complaints rather than fake direct quotes]
+
+"This pattern repeats because most people lack [specific knowledge/awareness]"
+
+4. ESCALATION EXAMPLES (570-600 seconds):
+"The most extreme version of this is when companies offer..."
+[Describe the most absurd applications using general terms]
+
+FOCUS ON:
+✅ General revenue model understanding
+✅ Realistic example calculations
+✅ Paraphrased user experiences
+✅ Observable business patterns
+
+AVOID:
+❌ Specific company revenue percentages
+❌ Fake direct user quotes
+❌ Precise internal metrics
+"""
+
+prompt_business_payoff = """
+PAYOFF & PROTECTION ADVICE - Final 1 Minute
+
+REQUIRED STRUCTURE:
+
+1. BALANCED ACKNOWLEDGMENT (540-550 seconds):
+"Again, don't get me wrong, there are definitely some advantages to the system if you know how to play it. But the vast majority of people using the system are not taking advantage of it. They are just getting taken advantage of."
+
+2. ACTIONABLE PROTECTION ADVICE (550-580 seconds):
+"So what do you do as a consumer?"
+
+Provide clear, absolute rules:
+- "The most important piece of advice: never [specific behavior] without [specific verification]"
+- "If you don't have [specific resource/knowledge], don't [specific action]"
+- Include one advanced tip: "And for advanced users, [specific strategy with clear boundaries]"
+
+3. CALLBACK CONCLUSION (580-600 seconds):
+"But there you have it, the truth about [topic callback]. These companies spend millions of dollars on psychological research to get you to [specific behavioral goal]. But now you know a little bit more about how to protect yourself."
+
+End with content tease:
+"And if you like this video, make sure to check out this video that covers [related business psychology topic with specific hook]..."
+
+NUMBER GUIDELINES:
+- SAFE TO USE: Round time estimates, obvious spending limits, general advice
+- VERIFY NEEDED: Any specific research investment amounts, user behavior statistics
+- Example: "These companies spend [VERIFY: research investment amount] on psychological research"
+
+JSON OUTPUT:
+{
+    "characters": {"NARRATOR": "MAN1"},
+    "story": [
+        {"speaker": "NARRATOR", "line": "[Balanced acknowledgment]"},
+        {"speaker": "NARRATOR", "line": "[Actionable protection advice]"},
+        {"speaker": "NARRATOR", "line": "[Callback conclusion with tease and VERIFY tags if needed]"}
+    ]
+}
+"""
+
+# AI HALLUCINATE FACTS
+
+prompt_business_hook2 = """
+VIRAL HOOK GENERATOR - First 60 Seconds
+
+You are creating the opening hook for a viral business psychology explainer video. Study the successful pattern below:
+
+REQUIRED STRUCTURE:
+Choose ONE of these proven hook styles based on what fits the topic which is {topic_title}:
+
+1. VISUAL SHOCK OPENER (0-15 seconds):
+"Look at this chart right here. This shows [specific data visualization]. And in [current year], [shocking statistic with absurd comparison that's almost incomprehensible]."
+
+Example: "Look at this chart right here. This shows total consumer debt in America over 10 years. And in 2024, Americans owe $5 trillion - enough to buy every NFL, NBA, and MLB team 10 times over."
+
+2. THE MANIPULATION REVEAL (15-30 seconds):
+"And to make matters worse, we are constantly surrounded by [psychological tricks/hidden fees/manipulation tactics] designed to [specific harmful outcome]. The worst of these: [specific business practice] that has been designed to take advantage of [specific vulnerable group]."
+
+3. PERSONAL RELATABILITY HOOK (30-45 seconds):
+Switch to first person, casual tone - make it deeply personal:
+"So when you [relatable scenario], and you only [small immediate action], [instant gratification happens]. [Product/result arrives quickly]. [Rationalization thought]. Why should I care about [future consequence]? I don't know me [time period] from now. She/He can deal with that."
+
+4. DEFINITION BRIDGE (45-60 seconds):
+"[Business practice] is [simple definition] offered by companies like [3 specific, recognizable examples]. You'll typically see these [where they appear], offering you [the basic promise]. But it's not quite that simple."
+
+5. CONTRADICTION / COUNTER-INTUITIVE FACT (optional addition):
+"You think [common belief], but actually [surprising truth that challenges expectations]."
+
+6. MICRO-STORY OR ANECDOTE (optional addition):
+"Briefly describe a real-life scenario or incident that instantly illustrates the stakes or problem for the audience."
+
+TOPIC INPUT:
+Hook Angle: {hook_angle}
+Central Mystery: {central_mystery}
+
+VIRAL REQUIREMENTS:
+- Use specific company names, never generic terms
+- Include exact numbers and shocking comparisons
+- Start every section with "Look at this" or similar visual reference
+- Use conversational, slightly outraged tone
+- Personal pronouns and relatable scenarios
+- End with a cliffhanger transition
+
+JSON OUTPUT:
+{{
+    "Characters": {{"NARRATOR": "MAN1"}},
+    "story": [
+        {{"speaker": "NARRATOR", "line": "Look at this chart right here..."}},
+        {{"speaker": "NARRATOR", "line": "And to make matters worse..."}},
+        {{"speaker": "NARRATOR", "line": "So when you..."}},
+        {{"speaker": "NARRATOR", "line": "[Business practice] is..."}}
+    ]
+}}
+
+TARGET: 60 seconds of content that creates immediate curiosity and personal connection.
+"""
+
+prompt_business_mystery2 = """
+CENTRAL MYSTERY BUILDER - Minutes 1-3
+
+You are creating the mystery setup that keeps viewers hooked after the initial shock. Follow this proven structure:
+
+REQUIRED STRUCTURE:
+
+1. HISTORICAL CONTEXT SETUP (60-120 seconds):
+"These [current practice] aren't necessarily groundbreaking. In fact, [current thing] is kind of a newer modernized version of [historical practice] that you would see at [specific old examples]."
+
+Then explain:
+- How the old system worked
+- Why it disappeared (specific reasons)
+- How the new version seems better
+- The trap: "The only problem is..."
+
+2. THE EXPLOSION DATA (120-150 seconds):
+"And that idea began hooking people in because [practice] has seen explosive growth over the last [X] years, going from $[amount] in [year] to $[much larger amount] in [recent year]. And it's projected to reach $[even larger amount] by [future year]."
+
+3. CULTURAL FORCES REVEAL (150-180 seconds):
+"But this explosion wasn't happening in a vacuum. It's actually part of [number] major cultural shifts..."
+
+List exactly 3 cultural trends:
+- First: [trend with specific explanation]
+- Second: [trend with specific explanation] 
+- Third: [trend with specific explanation]
+
+End with: "Combine all of that with [demographic vulnerability], and you have the perfect storm..."
+
+TOPIC INPUT:
+Central Mystery: {central_mystery}
+Key Examples: {key_examples}
+
+MYSTERY REQUIREMENTS:
+- Include specific years and growth numbers
+- Name real companies and historical examples
+- Show clear before/after contrast
+- Build toward psychological explanation
+- Use "But" and "And" for flow
+- Create anticipation for the psychology section
+
+JSON OUTPUT:
+{{
+    "Characters": {{"NARRATOR": "MAN1"}},
+    "story": [
+        {{"speaker": "NARRATOR", "line": "These [practice] aren't necessarily groundbreaking..."}},
+        {{"speaker": "NARRATOR", "line": "And that idea began hooking people in..."}},
+        {{"speaker": "NARRATOR", "line": "But this explosion wasn't happening in a vacuum..."}}
+    ]
+}}
+
+TARGET: 2 minutes building mystery and setting up psychological explanation.
+"""
+
+prompt_business_psychology2 = """
+PSYCHOLOGY BREAKDOWN GENERATOR - Minutes 3-7
+
+You are revealing the psychological mechanisms behind business practices. This is the core educational content that makes viewers feel smart.
+
+REQUIRED STRUCTURE:
+
+1. PROBLEM QUESTION SETUP (180-210 seconds):
+"But why is this even a problem? If they're not charging [obvious cost], how can they actually be taking advantage of me?"
+
+2. COMPARISON FRAMEWORK (210-270 seconds):
+Compare the new practice to traditional alternatives:
+"To answer that, we first need to look at the differences between [new practice] and [traditional alternative]. Because on the outside, they're basically the same thing."
+
+Show point-by-point comparison:
+- Traditional method: [process, requirements, downsides]
+- New method: [process, benefits, hidden catches]
+
+3. THE PSYCHOLOGICAL MECHANISMS (270-390 seconds):
+"You see, brands have mastered psychological manipulation... And they do this through [number] key tricks:"
+
+For each psychological principle:
+- Give it the scientific name: "what psychologists call [technical term]"
+- Explain in simple terms with everyday metaphors
+- Show specific business application
+- Include "Have you ever noticed that..." examples
+- Provide shocking statistics: "One in every [number] users actually..."
+
+4. DESIGN MANIPULATION REVEAL (390-420 seconds):
+"These aren't accidents. These are specific design decisions to short-circuit your brain into making financial decisions more on impulse than with rational thinking."
+
+Show specific UI/UX tricks:
+- Color psychology
+- Pre-selected options
+- Artificial urgency
+- Visual hierarchy manipulation
+
+TOPIC INPUT:
+Psychological Principles: {psychological_principles}
+Why It Works: {why_it_works}
+
+PSYCHOLOGY REQUIREMENTS:
+- Use scientific terminology but explain simply
+- Include specific statistics and percentages
+- Show concrete examples viewers can recognize
+- Build from simple to complex concepts
+- Use "you" constantly to maintain engagement
+- Include visual references throughout
+
+JSON OUTPUT:
+{{
+    "Characters": {{"NARRATOR": "MAN1"}},
+    "story": [
+        {{"speaker": "NARRATOR", "line": "But why is this even a problem?..."}},
+        {{"speaker": "NARRATOR", "line": "To answer that, we first need to look at the differences..."}},
+        {{"speaker": "NARRATOR", "line": "You see, brands have mastered psychological manipulation..."}},
+        {{"speaker": "NARRATOR", "line": "These aren't accidents..."}}
+    ]
+}}
+
+TARGET: 4 minutes of psychological education that feels like revealing secrets.
+"""
+
+prompt_business_application2 = """
+BUSINESS MODEL EXPOSÉ - Minutes 7-10
+
+You are exposing exactly how companies profit from psychological manipulation. This section makes viewers feel like insiders understanding the business game.
+
+REQUIRED STRUCTURE:
+
+1. REVENUE MODEL BREAKDOWN (420-480 seconds):
+"So let's look at how these companies actually make money beyond just [obvious revenue source]."
+
+Number each revenue stream clearly:
+"First... Second... Third... And finally..."
+
+For each revenue stream:
+- Specific percentages and dollar amounts
+- Real company examples
+- Shocking statistics about frequency
+- Connect back to psychological principles
+
+2. CONCRETE EXAMPLE WALKTHROUGH (480-540 seconds):
+"So now let's look at buying a [specific expensive product everyone knows] for $[amount]."
+
+Present exactly 3 options with specific numbers:
+"When you reach the checkout page, you have three options..."
+- Option 1: [full payment with benefits/simplicity]
+- Option 2: [traditional credit with specific APR and total cost calculation]  
+- Option 3: [new method with installment breakdown]
+
+"Which sounds like the best deal to you?"
+
+3. REAL VICTIM TESTIMONIALS (540-570 seconds):
+Include direct quotes from real users:
+"[Specific quote showing the real impact]"
+
+Connect to broader patterns:
+"This isn't necessarily a bad deal because... But to do so requires financial education. And sadly, [shocking statistic about financial literacy]."
+
+4. EXTREME EXAMPLES (570-600 seconds):
+Show the most absurd applications:
+"A crazy story we recently saw is that [company] is now on [platform], which allows you to finance your $[small amount] [everyday item] over [number] payments..."
+
+Explain loan stacking with specific statistics:
+"In [year], [percentage] of [users] had more than one loan going at one time."
+
+TOPIC INPUT:
+Key Examples: {key_examples}
+
+BUSINESS REQUIREMENTS:
+- Include specific revenue percentages
+- Show real calculation examples
+- Use direct quotes from users
+- Escalate to most extreme examples
+- Connect business model to psychology
+- Include demographic targeting data
+
+JSON OUTPUT:
+{{
+    "Characters": {{"NARRATOR": "MAN1"}},
+    "story": [
+        {{"speaker": "NARRATOR", "line": "So let's look at how these companies actually make money..."}},
+        {{"speaker": "NARRATOR", "line": "So now let's look at buying a..."}},
+        {{"speaker": "NARRATOR", "line": "[Include real user quote]"}},
+        {{"speaker": "NARRATOR", "line": "A crazy story we recently saw..."}}
+    ]
+}}
+
+TARGET: 3 minutes exposing business model with specific numbers and examples.
+"""
+
+prompt_business_payoff2 = """
+PAYOFF & PROTECTION ADVICE - Final 1 Minute
+
+You are providing the satisfying conclusion that connects everything back and empowers viewers with protection strategies.
+
+REQUIRED STRUCTURE:
+
+1. BALANCED ACKNOWLEDGMENT (540-550 seconds):
+"Again, don't get me wrong, there are definitely some advantages to the system if you know how to play it. But the vast majority of people using the system are not taking advantage of it. They are just getting taken advantage of."
+
+2. ACTIONABLE PROTECTION ADVICE (550-580 seconds):
+"So what do you do as a consumer?"
+
+Provide clear, absolute rules:
+- "The most important piece of advice: never spend more than you currently have"
+- "If you don't have the cash in your bank, don't spend it"
+- Include one conditional tip for advanced users
+
+3. CALLBACK CONCLUSION (580-600 seconds):
+"But there you have it, the truth about [topic]. These companies spend millions of dollars on psychological research to get you to spend more than you can actually afford. But now you know a little bit more about how to protect yourself."
+
+End with content tease:
+"And if you like this video, make sure to check out this video that covers [related business psychology topic]..."
+
+TOPIC INPUT:
+Topic Title: {topic_title}
+Why It Works: {why_it_works}
+
+PAYOFF REQUIREMENTS:
+- Balance acknowledgment of legitimate uses
+- Provide absolute, memorable rules
+- Connect back to opening hook
+- End with empowerment and protection
+- Tease related content for retention
+
+JSON OUTPUT:
+{{
+    "Characters": {{"NARRATOR": "MAN1"}},
+    "story": [
+        {{"speaker": "NARRATOR", "line": "[Balanced acknowledgment]"}},
+        {{"speaker": "NARRATOR", "line": "[Actionable protection advice]"}},
+        {{"speaker": "NARRATOR", "line": "[Callback conclusion with tease]"}}
+    ]
+}}
+
+TARGET: 1 minute of practical advice and satisfying conclusion.
+"""
+
+
 
 
 business_psych_prompt ="""
@@ -342,6 +1063,7 @@ Apologetic or uncertain tone
 Obvious insights everyone already knows
 
 GOAL: Create the "I can't stop watching this" feeling by revealing counterintuitive business strategies that seem crazy until you understand the psychology. Every 30 seconds should deliver a new "wait, what?" moment."""
+
 
 # Deepseek
 business_psych_prompt2 = """
@@ -660,215 +1382,5 @@ AVOID:
 - Hedging language - make confident assertions
 - Long paragraphs - break into digestible chunks
 """
-
-
-business_psych_ideas = """
-You are a viral content strategist specializing in finding business psychology topics that will captivate YouTube audiences. Your job is to identify counterintuitive business decisions that seem illogical but reveal fascinating psychological strategies.
-VIRAL TOPIC FORMULA:
-The Contradiction: Find business practices that seem stupid/counterproductive but are actually brilliant
-The Mystery: Why successful companies do things that appear to hurt their business
-The Psychology: Reveal the hidden psychological principles driving these decisions
-TOPIC CATEGORIES THAT GO VIRAL:
-Tech Company Paradoxes:
-
-Why Apple removes features people love
-How Google makes money from "free" products
-Why social media apps make themselves addictive then promote "digital wellness"
-
-Streaming/Entertainment Psychology:
-
-Why Netflix cancels popular shows
-How Disney creates artificial scarcity with "vault" releases
-Why TikTok shows you content from accounts you don't follow
-
-Retail Mind Games:
-
-Why stores put expensive items at eye level
-How subscription services make canceling difficult
-Why "limited time offers" never actually end
-
-Corporate Manipulation Tactics:
-
-Why companies create problems then sell solutions
-How brands use fear of missing out (FOMO)
-Why customer service is intentionally frustrating
-
-WHAT MAKES A TOPIC VIRAL:
-Relatability: Everyone has experienced this but never understood why
-Counterintuitive: Goes against common sense/logic
-Specific Examples: Can name exact companies and situations
-Pattern Recognition: Once explained, viewers see it everywhere
-Emotional Response: Makes people feel manipulated/enlightened
-TOPIC GENERATION PROCESS:
-Step 1: Identify the Paradox
-Find a well-known business practice that seems illogical:
-
-"Why does [Company] do [Thing] when it obviously hurts [Expected Outcome]?"
-Look for practices that consumers complain about but companies keep doing
-
-Step 2: Validate the Mystery
-Ensure the topic has these elements:
-
-Multiple specific, named examples from different companies
-Clear contradiction between logical expectation and actual practice
-Measurable business success despite seemingly bad strategy
-
-Step 3: Confirm Psychological Depth
-The explanation should involve:
-
-At least 2-3 psychological principles/biases
-Both conscious strategy and subconscious consumer response
-Broader implications beyond just one company
-
-Step 4: Test Viral Potential
-Ask yourself:
-
-Would this make someone say "I never thought about it that way"?
-Can viewers immediately think of examples in their own life?
-Does this reveal a pattern they'll notice everywhere after watching?
-
-HIGH-PERFORMING TOPIC FORMATS:
-"Why [Company] Does [Counterintuitive Thing]"
-
-Why McDonald's ice cream machines are always broken
-Why airlines overbook flights they know are full
-Why video games cost $60 but have $100 in additional content
-
-"The Psychology Behind [Business Practice]"
-
-The psychology behind subscription box addiction
-Why "free trials" that require credit cards
-How loyalty programs manipulate your spending behavior
-
-"How [Industry] Tricks Your Brain"
-
-How dating apps keep you single (but engaged)
-Why food delivery apps show "surge pricing"
-How streaming services hook you with incomplete series
-
-CURRENT TRENDING TOPICS TO EXPLORE:
-Post-Pandemic Business Changes:
-
-Why remote work companies are forcing return to office
-How subscription services exploded during lockdown
-Why delivery apps are more expensive than before
-
-AI and Tech Disruption:
-
-Why companies claim AI will replace jobs but keep hiring
-How social media algorithms decide what goes viral
-Why tech companies give away AI tools for "free"
-
-Economic Psychology:
-
-Why companies raise prices during inflation (beyond just costs)
-How "shrinkflation" psychologically works better than price increases
-Why luxury brands become more expensive during recessions
-
-OUTPUT FORMAT:
-For each topic,You must provide in this json format:
-{
-    "topic_title": "Why Netflix Cancels Shows Right When They Get Good",
-    "hook_angle": "Netflix spends millions making shows, then cancels them at their peak popularity",
-    "central_mystery": "Why would a company destroy their most valuable content when viewers are most engaged?",
-    "key_examples": [
-        "The OA - canceled after massive fan campaign",
-        "Sense8 - expensive production, devoted fanbase, canceled after 2 seasons",
-        "Teenage Bounty Hunters - 100% Rotten Tomatoes, still canceled"
-    ],
-    "psychological_principles": [
-        "Sunk cost fallacy exploitation",
-        "Loss aversion in subscription retention",
-        "Novelty bias in content consumption"
-    ],
-    "viral_potential_score": 9,
-    "why_it_works": "Everyone has experienced this frustration, reveals calculated manipulation of viewer psychology, pattern recognition applies to all streaming services"
-}
-TOPIC VALIDATION CHECKLIST:
-✅ Specific Examples: Can name 3+ real companies/situations
-✅ Counter-Intuitive: Goes against obvious business logic
-✅ Relatable: Most viewers have experienced this personally
-✅ Educational: Teaches actionable psychology principles
-✅ Pattern Recognition: Viewers will notice this everywhere after
-✅ Emotional Hook: Creates "I can't believe they do this" feeling
-✅ Current Relevance: Applies to businesses operating today
-AVOID THESE TOPICS:
-
-Obvious business strategies everyone understands
-Conspiracy theories without evidence
-Topics requiring extensive background knowledge
-One-off situations that don't reveal broader patterns
-Practices that are clearly illegal/unethical without psychological interest
-
-SUCCESS METRICS FOR TOPICS:
-High Viral Potential (8-10):
-
-Multiple companies using same psychological strategy
-Clear contradiction between expectation and reality
-Immediate "aha moment" when explained
-Applicable across multiple industries
-
-Medium Potential (6-7):
-
-Good psychological insights but more niche
-Requires some setup to understand the contradiction
-Interesting but not immediately relatable to everyone
-
-Low Potential (1-5):
-
-Obvious explanations or widely known strategies
-Limited to single company or industry
-No clear psychological principles involved
-
-GOAL: Generate topics that make viewers think "I never realized companies were manipulating my psychology in this specific way, and now I can't unsee it everywhere."
-
-
-"""
-
-prompt_dialogue = """
-You are creating a dialogue-driven {genre} story for a viral YouTube channel. Focus on explosive conversations and character conflicts that keep viewers engaged.
-
-**DIALOGUE OPTIMIZATION FOR YOUTUBE:**
-- IMMEDIATE CONFLICT: Characters argue/confront from the first line
-- RAPID-FIRE EXCHANGES: Quick back-and-forth that builds tension
-- REVELATION DROPS: Characters reveal secrets through dialogue
-- EMOTIONAL PEAKS: Moments of anger, betrayal, shock, or realization
-- QUOTABLE LINES: Memorable phrases viewers will comment about
-
-**RETENTION HOOKS:**
-- Start in the middle of a heated argument
-- Each character response should escalate or reveal something new
-- Use interruptions, denials, and "gotcha" moments
-- Include phrases like "You want to know the truth?" "I can't believe you did this"
-- Build to a dramatic confrontation or revelation
-
-**TRENDING DIALOGUE SCENARIOS:**
-- Confronting a cheating partner
-- Family members revealing long-held secrets
-- Friends discovering betrayal
-- Workplace confrontations about unfair treatment
-- Roommates/neighbors having explosive arguments
-
-**PACING:** Each line under 15 words. Rapid exchanges with emotional punches.
-
-**CHARACTER DYNAMICS:** Create clear conflict between characters with opposing goals/secrets.
-
-
-**JSON FORMAT:**
-{{
-    "Characters": {{"ALEX": "WOMAN1", "JORDAN": "MAN1", "TAYLOR": "WOMAN2"}},
-    "story": [
-        {{"speaker": "ALEX", "line": "I found the messages, Jordan. All of them."}},
-        {{"speaker": "JORDAN", "line": "What messages? I don't know what you're talking about."}},
-        {{"speaker": "ALEX", "line": "Don't lie to me! Taylor, tell him what you told me yesterday."}}
-    ]
-}}
-
-**DIALOGUE STYLE:** Natural, emotional, with subtext. Characters should feel like real people in crisis situations.
-"""
-
-
-
-
 
 
