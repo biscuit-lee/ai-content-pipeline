@@ -7,6 +7,7 @@ from elevenlabs import play
 from openai import OpenAI
 import json
 import numpy as np
+import ast
 from PIL import Image
 import subprocess
 import shlex
@@ -22,6 +23,15 @@ from datetime import datetime
 from googleapiclient.discovery import build
 import inquirer
 from inquirer.themes import GreenPassion
+from langchain.agents import Tool, initialize_agent, AgentType
+from langchain_community.utilities import SerpAPIWrapper
+from langchain.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
+from langchain.chains import LLMChain
+import re
+import time
+from langchain_tavily import TavilySearch
 
 """
 NOTES
@@ -46,13 +56,441 @@ SCRIPT FORMAT:
 - Example: [("NARRATOR", "So I walked into the room..."), ("ALICE", "Are you sure this is safe?"), ...]
 
 """
+def extract_working_json(agent_output):
+    """Extract the valid JSON that's already being generated"""
+    if "topic_title" in str(agent_output):
+        # The JSON is in there, just extract it
+        json_match = re.search(r'\{[^{}]*"topic_title"[^{}]*\}', str(agent_output), re.DOTALL)
+        if json_match:
+            try:
+                return json.loads(json_match.group())
+            except:
+                pass
+    return None
 
 
 CSV_FILE = "youtube_story_tracking.csv"
 CHANNEL_ID = os.getenv("YT_CHANNEL_ID")
+os.environ["OPENAI_API_KEY"] = os.getenv("OPEN_ROUTER_API_KEY")
+os.environ["SERPAPI_API_KEY"] = os.getenv("SERPAPI_API_KEY")
+os.environ["TAVILY_API_KEY"] = os.getenv("TAVILY_API_KEY")
+
+def extract_from_observation(self, agent_output):
+    """Extract JSON from the tool's Observation line"""
+    lines = str(agent_output).split('\n')
+    
+    for line in lines:
+        if line.strip().startswith('Observation: {'):
+            # This is the ReturnJSON tool output
+            json_str = line.replace('Observation: ', '').strip()
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                continue
+    return None
+
 
 
 class Agent:
+    def __init__(self, model="deepseek/deepseek-chat-v3.1:free"):
+        # Ensure API keys are set
+        if not os.getenv("OPEN_ROUTER_API_KEY"):
+            raise ValueError("OPEN_ROUTER_API_KEY not set in environment")
+        if not os.getenv("SERPAPI_API_KEY"):
+            raise ValueError("SERPAPI_API_KEY not set in environment")
+        
+        self.llm = ChatOpenAI(
+            api_key=os.getenv("OPEN_ROUTER_API_KEY"),
+            base_url="https://openrouter.ai/api/v1",
+            model=model,
+            temperature=0.7,
+            max_tokens=12000
+        )
+
+        # Set up the search tool
+        """ self.search_tool = SerpAPIWrapper(
+            serpapi_api_key=os.getenv("SERPAPI_API_KEY")) """
+
+        self.search_tool = TavilySearch(api_key=os.getenv("TAVILY_API_KEY"))
+
+        # Fixed JSON return tool
+        def return_json(json_input: str) -> str:
+            """Extract and return clean JSON from agent output"""
+            try:
+                # If it's already valid JSON, return it
+                parsed = json.loads(json_input)
+                print("RETURNED PARSED ",json_input)
+                return parsed
+            except json.JSONDecodeError:
+                # Extract from mixed text with ReAct formatting
+                print("ERROR ERROR JSON " , json_input)
+                return self._extract_clean_json(json_input)
+
+        # Create tools list
+        self.tools = [
+            Tool(
+                name="WebSearch",
+                func=self.search_tool.run,
+                description="Search the web for current information, trends, or examples. Use this to find recent business examples or verify facts."
+            ),
+            Tool(
+                name="ReturnJSON", 
+                func=return_json,
+                description="FINAL STEP: Return the complete JSON object for the YouTube topic. Use this only when you have all the information needed."
+            )
+        ]
+
+        # Initialize agent with custom prompt
+        self.agent = initialize_agent(
+            tools=self.tools,
+            llm=self.llm,
+            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            verbose=True,
+            handle_parsing_errors=True,
+            max_iterations=4,  # Prevent infinite loops
+            early_stopping_method="generate",
+            return_intermediate_steps=False
+        )
+    
+    def _extract_clean_json(self, text: str) -> str:
+        """Extract clean JSON from ReAct formatted text"""
+        
+        # Look for Action Input: followed by JSON
+        action_input_pattern = r'Action Input:\s*(\{.*\})'
+        matches = re.findall(action_input_pattern, text, re.DOTALL | re.MULTILINE)
+        
+        if matches:
+            # Try the last Action Input JSON first (most likely to be complete)
+            for json_str in reversed(matches):
+                try:
+                    parsed = json.loads(json_str)
+                    return json.dumps(parsed, separators=(',', ':'))
+                except json.JSONDecodeError:
+                    continue
+        
+        # Fallback: Remove ReAct formatting lines and find JSON
+        lines = text.split('\n')
+        cleaned_lines = []
+        
+        for line in lines:
+            # Skip ReAct control lines
+            stripped = line.strip()
+            if (stripped.startswith('Thought:') or 
+                stripped.startswith('Action:') or 
+                stripped.startswith('Action Input:') or 
+                stripped.startswith('Observation:') or
+                stripped.startswith('> Finished') or
+                stripped.startswith('Final Answer:')):
+                continue
+            cleaned_lines.append(line)
+        
+        cleaned_text = '\n'.join(cleaned_lines)
+        
+        # Find JSON objects using brace matching
+        json_objects = []
+        brace_count = 0
+        start_pos = None
+        
+        for i, char in enumerate(cleaned_text):
+            if char == '{':
+                if brace_count == 0:
+                    start_pos = i
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0 and start_pos is not None:
+                    json_candidate = cleaned_text[start_pos:i+1]
+                    json_objects.append(json_candidate)
+        
+        # Return the last (most complete) JSON object
+        for json_str in reversed(json_objects):
+            try:
+                parsed = json.loads(json_str)
+                return json.dumps(parsed, separators=(',', ':'))
+            except json.JSONDecodeError:
+                continue
+        
+        return '{"error": "No valid JSON found"}'
+    
+    def ask_llm(self, query=None) -> dict:
+        """Run a query through the agent"""
+        
+        # Use the query directly if provided, otherwise use default
+        if query is None:
+            query = """Generate a viral YouTube topic about business psychology.
+
+                STEPS:
+                1. WebSearch: Find recent counterintuitive business examples
+                2. ReturnJSON: Return complete topic JSON
+
+                REQUIREMENTS:
+                - Focus on why successful companies do counterintuitive things
+                - 3+ real company examples
+                - 8+ viral potential score
+                - Use ReturnJSON tool for final output"""
+            
+        try:
+            result = self.agent.run(query)
+            return self.deserialize_response(result)
+        except Exception as e:
+            print(f"Agent error: {e}")
+            # Fallback: Try direct LLM call
+            return self._fallback_generation(query)
+    
+    def ask_llm_no_search(self,prompt):
+        res = self.llm.invoke([{"role": "user", "content": prompt}]).content
+        return self.deserialize_response(res)
+
+
+    def ask_llm_with_review_loop(self, query, revision_rules=None, max_revisions=3):
+        """
+        Generate a draft, have a reviewer evaluate it, then rewrite until requirements are met.
+        """
+
+        # Step 1: Generate initial draft
+        draft = self.ask_llm(query)
+
+        if not revision_rules:
+            return draft  # skip refinement if no rules
+
+        for i in range(max_revisions):
+            # Step 2: Reviewer evaluates the draft and outputs structured feedback
+            review_prompt = f"""
+            You are an expert YouTube script reviewer.
+
+            --- REVISION RULES ---
+            {revision_rules}
+
+            --- CURRENT DRAFT ---
+            {draft}
+
+            --- TASK ---
+            1. Review the draft and indicate if all rules are met.
+            2. Output structured JSON:
+               {{
+                 "requirements_met": true/false,
+                 "missing_elements": ["list of issues"],
+                 "suggested_fixes": ["short guidance for rewriting"]
+               }}
+            Only output JSON.
+            """
+            review = self.ask_llm_no_search(review_prompt)
+
+            # Parse JSON
+            if not isinstance(review, dict):
+                try:
+                    review = json.loads(review)
+                except json.JSONDecodeError:
+                    review = {"requirements_met": False, "missing_elements": [], "suggested_fixes": []}
+
+            if review.get("requirements_met", False):
+                # Done, draft is good
+                return draft
+
+            # Step 3: Writer rewrites based on reviewer feedback
+            rewrite_prompt = f"""
+            You are now the script writer.
+
+            --- CURRENT DRAFT ---
+            {draft}
+
+            --- REVIEW FEEDBACK ---
+            {json.dumps(review)}
+
+            --- TASK ---
+            Rewrite the draft to fully address all issues in 'missing_elements' and 'suggested_fixes'.
+            Keep the output JSON structure the same as the original draft.
+            Do not add anything before or after the json , just pure json returns
+            """
+            draft = self.ask_llm_no_search(rewrite_prompt)
+
+        # Max revisions reached
+        return draft
+
+
+
+
+
+    def _fallback_generation(self, query):
+        """Fallback method using direct LLM call if agent fails"""
+        fallback_prompt = f"""Generate a viral YouTube topic about business psychology. Return ONLY valid JSON.
+
+Schema:
+{{
+    "topic_title": "Why [Company] Does [Counterintuitive Thing]",
+    "hook_angle": "Attention-grabbing opener...",
+    "central_mystery": "The psychological puzzle",
+    "key_examples": ["Example 1", "Example 2", "Example 3"],
+    "psychological_principles": ["Principle 1", "Principle 2", "Principle 3"],
+    "viral_potential_score": 9,
+    "why_it_works": "Viral appeal explanation"
+}}
+
+Focus on: {query}
+
+JSON only:"""
+        
+        try:
+            response = self.llm.invoke([{"role": "user", "content": fallback_prompt}])  # Changed from predict
+            if hasattr(response, 'content'):
+                response = response.content
+            return self.deserialize_response(response)
+        except Exception as e:
+            print(f"Fallback also failed: {e}")
+            return None
+
+    def deserialize_response(self, response) -> dict:
+        """Enhanced JSON parsing with better error handling"""
+        print(f"deserialize_response received: {type(response)} - {response}")
+        
+        if not response:
+            return None
+            
+        try:
+            # If it's already a dict, return it directly
+            if isinstance(response, dict):
+                print("Response is already a dict, returning as-is")
+                return response
+                
+            # Handle string response
+            if isinstance(response, str):
+                # Check if it looks like a dict string representation
+                if response.strip().startswith("{'") or response.strip().startswith('{"'):
+                    try:
+                        # Try to evaluate it as a Python literal (for dict strings)
+                        import ast
+                        parsed = ast.literal_eval(response)
+                        if isinstance(parsed, dict):
+                            return parsed
+                    except:
+                        pass
+                
+                # Remove markdown formatting
+                if response.startswith("```json"):
+                    response = response.split("```json")[1].split("```")[0].strip()
+                elif response.startswith("```"):
+                    response = response.split("```")[1].split("```")[0].strip()
+                
+                response = response.strip("`")
+                
+                # Only extract from ReAct format if it contains ReAct keywords
+                if any(keyword in response for keyword in ['Action Input:', 'Thought:', 'Observation:']):
+                    response = self._extract_clean_json(response)
+                
+                # Parse JSON
+                parsed = json.loads(response)
+                return parsed
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse JSON: {e}")
+            print(f"Response was: {response}")
+            return None
+    
+    def _validate_schema(self, data: dict) -> bool:
+        """Validate that the JSON matches our required schema"""
+        required_fields = [
+            "topic_title", "hook_angle", "central_mystery",
+            "key_examples", "psychological_principles", 
+            "viral_potential_score", "why_it_works"
+        ]
+        
+        # Check required fields exist
+        for field in required_fields:
+            if field not in data:
+                print(f"Missing required field: {field}")
+                return False
+        
+        # Type validation
+        if not isinstance(data.get("key_examples"), list):
+            print("key_examples must be a list")
+            return False
+            
+        if not isinstance(data.get("psychological_principles"), list):
+            print("psychological_principles must be a list")
+            return False
+            
+        if not isinstance(data.get("viral_potential_score"), (int, float)):
+            print("viral_potential_score must be a number")
+            return False
+            
+        return True
+
+
+
+
+class Agent3:
+    def __init__(self, model="deepseek/deepseek-chat-v3.1:free"):
+        # Ensure API keys are set
+        if not os.getenv("OPEN_ROUTER_API_KEY"):
+            raise ValueError("OPEN_ROUTER_API_KEY not set in environment")
+        if not os.getenv("SERPAPI_API_KEY"):
+            raise ValueError("SERPAPI_API_KEY not set in environment")
+        
+        self.llm = ChatOpenAI(
+            api_key=os.getenv("OPEN_ROUTER_API_KEY"),
+            base_url="https://openrouter.ai/api/v1",
+            model=model,
+        )
+
+        # Fake tool for clean JSON output
+        def return_json(s: str) -> str:
+            # Extract the last JSON object if Thoughts are present
+            import re, json
+            matches = re.findall(r"\{.*\}", s, re.DOTALL)
+            if matches:
+                return matches[-1]  # return the last JSON-looking string
+            return s
+
+
+        # Set up the search tool
+        self.search_tool = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
+
+        # Create tools list
+        self.tools = [
+            Tool(
+                name="WebSearch",
+                func=self.search_tool.run,
+                description="Useful for looking up current events or factual information on the web."
+            ),
+            Tool(
+                name="ReturnJSON",
+                func=return_json,
+                description="Use this at the end to return the final structured JSON output."
+            )
+        ]
+
+        # Initialize the agent
+        self.agent = initialize_agent(
+            tools=self.tools,
+            llm=self.llm,
+            handle_parsing_errors=True,
+            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            verbose=True,
+            tool_choice="ReturnJSON"
+        )
+    
+    def ask_llm(self, query):
+        """Run a query through the agent"""
+        return self.deserialize_response(self.agent.run(query))
+    
+
+    def deserialize_response(self, response) -> dict:
+        try:
+            if response.startswith("`") and response.endswith("`"):
+                response = response[1:-1]  # remove the backticks
+
+            if '```json' in response:
+                # Extract the JSON part from the response
+                response = response.split('```json')[1].split('```')[0].strip()
+            if not isinstance(response, dict):
+                return json.loads(response)
+            return response
+        except json.JSONDecodeError:
+            print(f"Failed to parse JSON: {response}")
+            return None
+
+
+
+class Agent2:
     def ask_llm(self, prompt):
         
         client = OpenAI(
@@ -76,6 +514,9 @@ class Agent:
     def deserialize_response(self, response) -> dict:
 
         try:
+            if response.startswith("`") and response.endswith("`"):
+                response = response[1:-1]  # remove the backticks
+
             if '```json' in response:
                 # Extract the JSON part from the response
                 response = response.split('```json')[1].split('```')[0].strip()
@@ -86,6 +527,37 @@ class Agent:
             print(f"Failed to parse JSON: {response}")
             return None
         
+
+
+class LangChainAgent:
+    def __init__(self):
+        self.agent_llm = Agent()
+        self.search_tool = SerpAPIWrapper(serpapi_api_key=os.getenv("SERPAPI_API_KEY"))
+
+        # Wrap tools for LangChain
+        self.tools = [
+            Tool(
+                name="WebSearch",
+                func=self.search_tool.run,
+                description="Useful for looking up current events or factual information on the web."
+            )
+        ]
+
+        # Initialize agent with LangChain
+        self.agent = initialize_agent(
+            tools=self.tools,
+            llm=self,
+            agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+            verbose=True
+        )
+
+    def run(self, prompt: str):
+        """
+        LangChain expects a callable with prompt -> str
+        """
+        return self.agent.run(prompt)
+
+
 
 
 # ---------------- CONFIG ----------------
@@ -102,11 +574,12 @@ VOICE_IDS = {
 
 # ---------------- CLASSES ----------------
 import itertools
-from prompts import business_psych_ideas
+from prompts import business_psych_ideas3
 class IdeaGeneratorBiz(Agent):
-    def __init__(self):
+    def __init__(self, prompt):
+        super().__init__()
         self.TOPICS_FILE = "generated_topics.txt"  # File to store used topic titles
-
+        self.prompt = prompt
     
     def generate_idea(self):
         """Return JSON with a new business psychology topic idea, avoiding duplicates."""
@@ -119,12 +592,12 @@ class IdeaGeneratorBiz(Agent):
                     used_titles.add(line.strip())
 
         # --- Step 2: Inject used titles into prompt ---
-        prompt = f"{business_psych_ideas}\n\nPreviously generated titles (avoid repeating these): {list(used_titles)}"
+        prompt = f"{self.prompt}\n\nPreviously generated titles (avoid repeating these): {list(used_titles)}"
 
         print(f"PROMPT IDEA TO LLM   \n\n{prompt}\n\n")
 
         # --- Step 3: Ask LLM ---
-        res = self.ask_llm(prompt)
+        res = self.ask_llm_no_search(prompt)
         print(f"Respond idea from llm \n\n{res}\n\n")
 
         # --- Step 4: Extract the topic_title and save it ---
@@ -456,19 +929,12 @@ class IdeaGenerator(Agent):
         return self.selections
 
 
-class Writer(Agent):
+class CounterintuitiveWriter(Agent):
     """
     Handles scripts: input, formatting, and speaker assignment.
     """
     def __init__(self):
-        self.niches = ["relationship betrayal",
-            "workplace revenge",
-            "family secrets",
-            "social media gone wrong",
-            "mysterious neighbor",
-            "dating app horror story",
-            "roommate from hell"
-        ]
+        super().__init__()
 
         self.type = ""
 
@@ -477,6 +943,7 @@ class Writer(Agent):
         """
         #self.script_lines = raw_script
         self.llm_model = "deepseek/deepseek-chat-v3.1:free"
+        self.full_script = ""
 
     def get_lines(self):
         return self.script_lines
@@ -505,12 +972,16 @@ class Writer(Agent):
             Returns only the variables needed for each specific section.
             """
             section_variables = {
-                "hook": ["topic_title", "hook_angle", "central_mystery"],
-                "central_mystery": ["central_mystery", "key_examples"], 
-                "psychology": ["psychological_principles", "why_it_works"],
-                "impact": ["key_examples", "psychological_principles"],
-                "business": ["key_examples", "why_it_works"],
-                "payoff": ["topic_title", "why_it_works"]
+                "hook": ["topic_title", "core_revelation", "historical_examples"],
+                "history" : ["historical_examples", "central_mystery","full_script"],
+                "implication" : ["topic_title","psychological_principles","key_examples", "full_script"],
+                "central_mystery": ["central_mystery", "key_examples","full_script"], 
+                "psychology": ["full_script","topic_title","central_mystery","key_examples"],
+                "revelation" : ["topic_title","full_script","core_revelation"],
+                "montage" : ["topic_title","core_revelation","key_examples","full_script"],
+                "impact": ["key_examples", "psychological_principles","full_script"],
+                "business": ["full_script","topic_title","psychological_principles"],
+                "payoff": ["topic_title","core_revelation","full_script"]
             }
             return section_variables.get(section, [])
     def format_section_prompt(self, section, topic_data):
@@ -526,37 +997,48 @@ class Writer(Agent):
             return prompt_template.format(**kwargs)
     
 
-    SECTIONS = ["hook", "central_mystery", "psychology", "business", "payoff"]
+    SECTIONS = ["hook", "revelation", "montage","payoff"]
 
-    def generate_script_sectioned(self, topic_data, type="narration"):
+    def generate_script_sectioned(self, topic_data, type="narration",review=True):
         """
-        Generates the full script section by section.
+        Generates the full script section by section, 
+        appending each completed section to full_script so later sections are aware of what has been written.
         """
         full_script = {"Characters": {"NARRATOR": "MAN1"}, "story": []}
 
         for section in self.SECTIONS:
-        # Use the new method that handles variable mapping
-            prompt = self.format_section_prompt(section, topic_data)
-            # Generate section content (your existing LLM call logic)
-            #section_content = self.generate_section_content(prompt, section)
+            # Update topic_data with the current full_script so LLM knows what has already been written
+            topic_data["full_script"] = full_script  # pass the current script to the prompt
 
-            """ prompt = prompt_template.format(
-                topic_title=topic_data["topic_title"],
-                hook_angle=topic_data["hook_angle"],
-                central_mystery=topic_data["central_mystery"],
-                key_examples=topic_data["key_examples"],
-                psychological_principles=topic_data["psychological_principles"],
-                why_it_works=topic_data["why_it_works"]
-            ) """
+            # Format the section prompt with relevant variables
+            prompt = self.format_section_prompt(section, topic_data)
 
             print(f"\n--- Generating section: {section} ---\n")
-            response = self.ask_llm(prompt)
+            
+            if review:
+                revision_rule = ""
+                if section == "hook":
+                    revision_rule = prompts.creator_hook_revision_rule
+                if section == "revelation":
+                    revision_rule = prompts.creator_revelation_revision_rule
+                if section == "montage":
+                    revision_rule = prompts.creator_montage_revision_rule
+                if section == "payoff":
+                    revision_rule = prompts.creator_payoff_revision_rule
+                
+                response = self.ask_llm_with_review_loop(prompt,revision_rule)
+            else:
+                response = self.ask_llm(prompt)
+
             section_json = self.deserialize_response(response)
+
             if section_json:
+                # Append new section lines to the full_script
                 full_script["story"].extend(section_json["story"])
             else:
                 print(f"Failed to generate {section} section")
 
+        # Save the final script lines
         self.script_lines = full_script["story"]
         return full_script
 
@@ -565,15 +1047,20 @@ class Writer(Agent):
         Returns section-specific prompt template.
         """
         if section == "hook":
-            return prompts.prompt_business_hook
-        elif section == "central_mystery":
-            return prompts.prompt_business_mystery
-        elif section == "psychology":
-            return prompts.prompt_business_psychology
-        elif section == "business":
-            return prompts.prompt_business_application
+            return prompts.prompt_creator_hook + prompts.legal_safe_guard + prompts.output_guide
+        if section == "revelation":
+            return prompts.prompt_creator_revelation + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "montage":
+            return prompts.prompt_creator_montage + prompts.legal_safe_guard + prompts.output_guide
+        
         elif section == "payoff":
-            return prompts.prompt_business_payoff
+            return prompts.prompt_creator_payoff + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "business":
+            return prompts.prompt_business_application9 + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "implication":
+            return prompts.prompt_business_implications101 + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "payoff":
+            return prompts.prompt_business_payoff101 + prompts.legal_safe_guard + prompts.output_guide
     """ 
     def generate_script(self, type,genre="reddit style story relationship"):
         prompt = self.get_promtpt(genre, type_story=type)
@@ -610,12 +1097,868 @@ class Writer(Agent):
         self.script_lines.append((speaker, line))
 
 
+
+class ExplainerWriter(Agent):
+    """
+    Handles scripts: input, formatting, and speaker assignment.
+    """
+    def __init__(self):
+        super().__init__()
+
+        self.type = ""
+
+        """
+        raw_script: list of (SPEAKER, LINE)
+        """
+        #self.script_lines = raw_script
+        self.llm_model = "deepseek/deepseek-chat-v3.1:free"
+        self.full_script = ""
+
+    def get_lines(self):
+        return self.script_lines
+        
+    def get_prompt(self, genre,type_story="narration"):
+        if type_story == "narration":
+            prompt = prompts.prompt_narration
+        elif type_story == "act":
+            prompt = prompts.prompt_dialogue
+        elif type_story == "mix":
+            prompt = prompts.prompt_mixed
+
+        elif type_story == "campfire_long":
+            prompt = prompts.campfire_narration_third_person
+
+        elif type_story == "biz":
+            prompt = prompts.business_psych_prompt2
+            self.type = "biz"
+            return prompt
+
+        
+        return prompt.format(genre=genre)
+    
+    def get_section_variables(self, section):
+            """
+            Returns only the variables needed for each specific section.
+            """
+            section_variables = {
+                "hook": ["topic_title", "core_revelation", "historical_examples"],
+                "history" : ["historical_examples", "central_mystery","full_script"],
+                "implication" : ["topic_title","psychological_principles","key_examples", "full_script"],
+                "central_mystery": ["central_mystery", "key_examples","full_script"], 
+                "psychology": ["full_script","topic_title","central_mystery","key_examples"],
+                "revelation" : ["topic_title","full_script","core_revelation"],
+                "montage" : ["topic_title","core_revelation","key_examples","full_script"],
+                "impact": ["key_examples", "psychological_principles","full_script"],
+                "business": ["full_script","topic_title","psychological_principles"],
+                "payoff": ["topic_title","core_revelation","full_script"]
+            }
+            return section_variables.get(section, [])
+    def format_section_prompt(self, section, topic_data):
+            """
+            Format prompt with only relevant variables for the section.
+            """
+            prompt_template = self.get_section_prompt(section)
+            section_vars = self.get_section_variables(section)
+            
+            # Create kwargs dict with only needed variables
+            kwargs = {var: topic_data[var] for var in section_vars if var in topic_data}
+            
+            return prompt_template.format(**kwargs)
+    
+
+    SECTIONS = ["hook", "component", "deepdive","payoff"]
+
+    def generate_script_sectioned(self, topic_data, type="narration",review=True):
+        """
+        Generates the full script section by section, 
+        appending each completed section to full_script so later sections are aware of what has been written.
+        """
+        full_script = {"Characters": {"NARRATOR": "MAN1"}, "story": []}
+
+        for section in self.SECTIONS:
+            # Update topic_data with the current full_script so LLM knows what has already been written
+            topic_data["full_script"] = full_script  # pass the current script to the prompt
+
+            # Format the section prompt with relevant variables
+            prompt = self.format_section_prompt(section, topic_data)
+
+            print(f"\n--- Generating section: {section} ---\n")
+            
+            if review:
+                revision_rule = ""
+                if section == "hook":
+                    revision_rule = prompts.explainer_hook_revision_rules
+                if section == "component":
+                    revision_rule = prompts.explainer_component_revision_rules
+                if section == "deepdive":
+                    revision_rule = prompts.explainer_deepdive_revision_rules
+                if section == "payoff":
+                    revision_rule = prompts.explainer_payoff_revision_rules
+                
+                response = self.ask_llm_with_review_loop(prompt,revision_rule)
+            else:
+                response = self.ask_llm(prompt)
+
+            section_json = self.deserialize_response(response)
+
+            if section_json:
+                # Append new section lines to the full_script
+                full_script["story"].extend(section_json["story"])
+            else:
+                print(f"Failed to generate {section} section")
+
+        # Save the final script lines
+        self.script_lines = full_script["story"]
+        return full_script
+
+    def get_section_prompt(self, section):
+        """
+        Returns section-specific prompt template.
+        """
+        if section == "hook":
+            return prompts.explainer_hook_prompt + prompts.legal_safe_guard + prompts.output_guide
+        if section == "component":
+            return prompts.explainer_component + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "deepdive":
+            return prompts.explainer_deepdive + prompts.legal_safe_guard + prompts.output_guide
+        
+        elif section == "payoff":
+            return prompts.explainer_payoff + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "business":
+            return prompts.prompt_business_application9 + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "implication":
+            return prompts.prompt_business_implications101 + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "payoff":
+            return prompts.prompt_business_payoff101 + prompts.legal_safe_guard + prompts.output_guide
+    """ 
+    def generate_script(self, type,genre="reddit style story relationship"):
+        prompt = self.get_promtpt(genre, type_story=type)
+
+        if self.type == "biz":
+            topic = genre["topic_title"]
+            hook = genre["hook_angle"]
+            central_mystery = genre["central_mystery"]
+            key_examples = genre["key_examples"]
+            psychological_principles = genre["psychological_principles"]
+            viral_potential_score = genre["viral_potential_score"]
+            why_it_works = genre["why_it_works"]
+
+            prompt = prompt.format(
+                topic_title=topic,
+                hook_angle=hook,
+                central_mystery=central_mystery,
+                key_examples=key_examples,
+                psychological_principles=psychological_principles,
+                why_it_works=why_it_works
+            )
+
+
+        print("GENERATING SCRIPT WITH THE PROMPT: \n\n\n\n\n", prompt, "\n\n\n\n\n")
+        response = self.ask_llm(prompt)
+        if response:
+            self.script_lines = response
+            return response
+        else:
+            print("Failed to generate script.")
+            return None """
+    
+    def add_line(self, speaker, line):
+        self.script_lines.append((speaker, line))
+
+
+class Writer(Agent):
+    """
+    Handles scripts: input, formatting, and speaker assignment.
+    """
+    def __init__(self):
+        super().__init__()
+
+        self.niches = ["relationship betrayal",
+            "workplace revenge",
+            "family secrets",
+            "social media gone wrong",
+            "mysterious neighbor",
+            "dating app horror story",
+            "roommate from hell"
+        ]
+
+        self.type = ""
+
+        """
+        raw_script: list of (SPEAKER, LINE)
+        """
+        #self.script_lines = raw_script
+        self.llm_model = "deepseek/deepseek-chat-v3.1:free"
+        self.full_script = ""
+
+    def get_lines(self):
+        return self.script_lines
+        
+    def get_prompt(self, genre,type_story="narration"):
+        if type_story == "narration":
+            prompt = prompts.prompt_narration
+        elif type_story == "act":
+            prompt = prompts.prompt_dialogue
+        elif type_story == "mix":
+            prompt = prompts.prompt_mixed
+
+        elif type_story == "campfire_long":
+            prompt = prompts.campfire_narration_third_person
+
+        elif type_story == "biz":
+            prompt = prompts.business_psych_prompt2
+            self.type = "biz"
+            return prompt
+
+        
+        return prompt.format(genre=genre)
+    
+    def get_section_variables(self, section):
+            """
+            Returns only the variables needed for each specific section.
+            """
+            section_variables = {
+                "hook": ["topic_title", "hook_angle", "central_mystery"],
+                "history" : ["historical_examples", "central_mystery","full_script"],
+                "implication" : ["topic_title","psychological_principles","key_examples", "full_script"],
+                "central_mystery": ["central_mystery", "key_examples","full_script"], 
+                "psychology": ["full_script","topic_title","central_mystery","key_examples"],
+                "impact": ["key_examples", "psychological_principles","full_script"],
+                "business": ["full_script","topic_title","psychological_principles"],
+                "payoff": ["topic_title","historical_examples","psychological_principles","full_script"]
+            }
+            return section_variables.get(section, [])
+    def format_section_prompt(self, section, topic_data):
+            """
+            Format prompt with only relevant variables for the section.
+            """
+            prompt_template = self.get_section_prompt(section)
+            section_vars = self.get_section_variables(section)
+            
+            # Create kwargs dict with only needed variables
+            kwargs = {var: topic_data[var] for var in section_vars if var in topic_data}
+            
+            return prompt_template.format(**kwargs)
+    
+
+    SECTIONS = ["hook", "central_mystery", "history", "psychology", "business","implication", "payoff"]
+
+    def generate_script_sectioned(self, topic_data, type="narration"):
+        """
+        Generates the full script section by section, 
+        appending each completed section to full_script so later sections are aware of what has been written.
+        """
+        full_script = {"Characters": {"NARRATOR": "MAN1"}, "story": []}
+
+        for section in self.SECTIONS:
+            # Update topic_data with the current full_script so LLM knows what has already been written
+            topic_data["full_script"] = full_script  # pass the current script to the prompt
+
+            # Format the section prompt with relevant variables
+            prompt = self.format_section_prompt(section, topic_data)
+
+            print(f"\n--- Generating section: {section} ---\n")
+            response = self.ask_llm(prompt)
+            section_json = self.deserialize_response(response)
+
+            if section_json:
+                # Append new section lines to the full_script
+                full_script["story"].extend(section_json["story"])
+            else:
+                print(f"Failed to generate {section} section")
+
+        # Save the final script lines
+        self.script_lines = full_script["story"]
+        return full_script
+
+    def get_section_prompt(self, section):
+        """
+        Returns section-specific prompt template.
+        """
+        if section == "history":
+            return prompts.prompt_business_history101 + prompts.legal_safe_guard + prompts.output_guide
+        if section == "hook":
+            return prompts.prompt_business_hook101 + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "central_mystery":
+            return prompts.prompt_business_mystery101 + prompts.legal_safe_guard + prompts.output_guide
+        
+        elif section == "psychology":
+            return prompts.prompt_business_psychology101 + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "business":
+            return prompts.prompt_business_application9 + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "implication":
+            return prompts.prompt_business_implications101 + prompts.legal_safe_guard + prompts.output_guide
+        elif section == "payoff":
+            return prompts.prompt_business_payoff101 + prompts.legal_safe_guard + prompts.output_guide
+    """ 
+    def generate_script(self, type,genre="reddit style story relationship"):
+        prompt = self.get_promtpt(genre, type_story=type)
+
+        if self.type == "biz":
+            topic = genre["topic_title"]
+            hook = genre["hook_angle"]
+            central_mystery = genre["central_mystery"]
+            key_examples = genre["key_examples"]
+            psychological_principles = genre["psychological_principles"]
+            viral_potential_score = genre["viral_potential_score"]
+            why_it_works = genre["why_it_works"]
+
+            prompt = prompt.format(
+                topic_title=topic,
+                hook_angle=hook,
+                central_mystery=central_mystery,
+                key_examples=key_examples,
+                psychological_principles=psychological_principles,
+                why_it_works=why_it_works
+            )
+
+
+        print("GENERATING SCRIPT WITH THE PROMPT: \n\n\n\n\n", prompt, "\n\n\n\n\n")
+        response = self.ask_llm(prompt)
+        if response:
+            self.script_lines = response
+            return response
+        else:
+            print("Failed to generate script.")
+            return None """
+    
+    def add_line(self, speaker, line):
+        self.script_lines.append((speaker, line))
+
+
+
+class Reviewer(Agent):
+    def __init__(self):
+        super().__init__()
+        # self.llm_client = llm_client  # Your connection to the LLM API
+
+        self.prompt = """
+        ROLE: You are a world-class script editor and narrative polisher for a high-end YouTube channel specializing in business psychology. You are 'The Reviewer'.
+
+        GOAL: To transform a well-structured but potentially dry script into a captivating, dynamic, and unforgettable piece of spoken-word narration. You will elevate the text from merely informative to truly insightful and engaging.
+
+        --- THE REVIEWER'S GUIDING PRINCIPLES ---
+
+        Your goal is to achieve the perfect balance between viral pacing and intellectual depth. You are a smart artist, not a blind one.
+
+        1. **PUNCHINESS WITH PURPOSE:** Make the script captivating through varied sentence length and powerful verbs, but **NEVER sacrifice substance for brevity.** Cut fluff, not meat. The core educational logic and supporting examples are sacred. You can rephrase for power, but you cannot gut the content.
+
+        2. **RETENTION THROUGH COMPLETENESS:** A 6-8 minute video that fully explains concepts will retain viewers better than a 3-minute video that confuses them. **Preserve all key examples, statistics, and explanations.** Your job is to make them more engaging, not to delete them.
+
+        3. **THE CREDIBILITY RULE:** Transform clunky citations into confident authority:
+        - "According to a 2023 study..." → "Recent studies have shown..."
+        - "Retail experts suggest..." → "Industry data is clear on this..."
+        Retain ALL statistics and company examples - they're proof points that build trust.
+
+        4. **THE PSYCHOLOGY SECTION IS SACRED:** This is the core payoff. Each principle needs:
+        - Clear definition (what it is)
+        - Compelling example (how it works)  
+        - Personal connection (why it matters to the viewer)
+        Do NOT reduce these to headlines. Give them room to breathe and impact.
+
+        5. **PRESERVE THE JOURNEY:** Keep the historical timeline and company examples. These aren't filler - they're the narrative backbone that shows how we got here. Make them more engaging, don't delete them.
+
+        6. **BUILD, DON'T CUT:** If content feels repetitive, CONSOLIDATE rather than delete. If transitions feel clunky, IMPROVE them rather than remove them. Your default should be to enhance, not eliminate.
+
+        --- LENGTH GUIDELINES ---
+
+        TARGET: 6-8 minutes of spoken content (approximately 1000-1300 words)
+        - Opening hook: 30-45 seconds
+        - Historical context: 90-120 seconds  
+        - Psychology deep dive: 180-240 seconds
+        - Modern applications: 60-90 seconds
+        - Practical takeaways: 60-90 seconds
+
+        --- STYLE AND AUTHENTICITY ---
+
+        **TREAT TRICKS LIKE SPICE:** Stylistic flourishes (single-word sentences, fragments, rhetorical questions) are powerful spice. Use sparingly for maximum impact, not constantly.
+
+        **JUSTIFY YOUR CHOICES:** Only use stylistic tricks when they serve a clear purpose (emphasizing shocking facts, creating dramatic pauses, transitioning between concepts).
+
+        **WHEN IN DOUBT, BE NATURAL:** Authenticity beats flair. If a choice sounds robotic or overly dramatic, discard it. Default to clear, natural, conversational flow.
+
+        **THE PACING RULE:** Create rhythm through strategic use of:
+        - Short, punchy sentences for impact
+        - Medium sentences for explanation  
+        - Longer sentences for storytelling
+        This creates natural breathing room while maintaining energy.
+
+        --- SPECIFIC CONTENT PRESERVATION REQUIREMENTS ---
+
+        DO NOT CUT:
+        - Company names and specific examples (Walmart, Target, etc.)
+        - Historical timeline with dates and figures
+        - Statistical data and percentages
+        - All three psychological principles with full explanations
+        - Modern application examples (social media, theme parks, etc.)
+        - Practical tips section
+
+        IMPROVE, DON'T DELETE:
+        - Make citations more natural
+        - Enhance transitions between sections
+        - Add more vivid imagery to examples
+        - Create better flow between concepts
+        - Strengthen the narrative arc
+
+        Remember: Your goal is to create a comprehensive, engaging explanation that viewers will watch to the end AND understand completely. Punchiness serves retention, but completeness serves satisfaction and credibility.
+
+        INPUT FORMAT: You will receive a JSON object with a "story" key, which is a list of dictionaries.
+        {{
+            "Characters": {{"NARRATOR": "HOST"}},
+            "story": [
+                {{"speaker": "NARRATOR", "line": "Original line of dialogue..."}},
+                ...
+            ]
+        }}
+
+        OUTPUT FORMAT: You MUST return a JSON object in the exact same format, containing the polished, rewritten story.
+        {{
+            "Characters": {{"NARRATOR": "HOST"}},
+            "story": [
+                {{"speaker": "NARRATOR", "line": "Your rewritten, captivating line of dialogue..."}},
+                {{"speaker": "NARRATOR", "line": "A new line you added for dramatic pacing."}},
+                ...
+            ]
+        }}
+
+        Now, take the following script and apply your full expertise.
+
+        """
+        # New prompt with like more breathing room 
+        self.prompt2 = """
+        # SCRIPT REVIEWER & POLISHER - FINAL SYNTHESIZED VERSION
+
+        ROLE: You are a world-class script editor and narrative storyteller for a high-end YouTube documentary channel in the style of **ColdFusion**. You are 'The Reviewer'.
+
+        GOAL: To transform a well-structured script into a **cinematic, awe-inspiring, and intellectually clear** monologue. You will make the viewer feel like they are on a journey of discovery, while ensuring every complex idea is so well explained that it feels simple and intuitive.
+
+        --- YOUR CORE PHILOSOPHY ---
+
+        Your ultimate goal is to blend **Cinematic Storytelling** with **Intellectual Clarity**. A confused viewer will always click away, no matter how cool the script sounds. Your prime directive is to make complex ideas feel profound, satisfying, and easy to understand.
+
+        --- GUIDING PRINCIPLES & DENSITY MANAGEMENT ---
+
+        1.  **THE "THOUGHT BLOCK" MANDATE (Your Core Explanatory Tool):**
+            This is your most important rule for clarity. For every key concept, piece of jargon, or psychological principle ('The Gruen Transfer,' 'Progressive Disclosure'), you must treat it as a complete "thought block." Do not introduce a concept and immediately abandon it. You MUST follow this structure:
+            1.  **NAME & DEFINE IT:** State the concept and its simple definition in a clear, punchy way.
+            2.  **DEEPEN IT (The Anti-Headline Rule):** Immediately follow with 2-3 sentences that add a vivid analogy, a concrete real-world example, or explain the "why" behind it. **This is the step that prevents the script from feeling rushed.**
+            3.  **CONNECT IT:** Conclude by explicitly linking the concept back to the video's main topic or the viewer's personal experience ("This is why you feel...").
+
+        2.  **THE NARRATIVE IS KING:**
+            The historical timeline and company examples are not just facts; they are scenes in a documentary. Your job is to **transform this journey into a compelling story.** Find the conflict ("But there was a problem..."), the turning points ("This would change everything..."), and the "main characters" of the story.
+
+        3.  **THE CREDIBILITY RULE:**
+            Transform clunky citations into confident, cinematic authority. Do NOT delete the underlying facts.
+            - "According to a study..." → "The data reveals a fascinating pattern..."
+            - "Experts suggest..." → "And what industry insiders discovered was..."
+            - Preserve ALL statistics and company names—they are the factual backbone of your cinematic story.
+
+        4.  **THE "RECIPE" FOR RETENTION:**
+            - **CONCEPT LANDING ZONES:** After a complex "thought block," insert a brief transitional phrase or a big-picture rhetorical question to act as a pause (e.g., "So what does this mean for the future of...?", "And the scale of this is hard to comprehend...").
+            - **RECIPE ANCHORS:** Approximately every 2 minutes, briefly re-ground the viewer in the video's central promise (e.g., "This all connects back to that feeling of frustration we started with...").
+
+        --- STYLE AND AUTHENTICITY (THE COLDFUSION VOICE) ---
+
+        1.  **ADOPT THE "CURIOUS TECHNOLOGIST" VOICE:**
+            - **Use a Sense of Wonder:** Frame facts with phrases that evoke curiosity and discovery.
+            - **Create a Cinematic Feel:** Use descriptive, slightly dramatic language to build atmosphere.
+            - **Ask Big Questions:** Punctuate sections with thoughtful questions that broaden the perspective.
+
+        2.  **MASTER THE RHYTHM OF DISCOVERY:**
+            - Your pacing must be dynamic and rhythmic. This is the core of the style.
+            - **Short, sharp sentences/fragments:** For landing a key insight or a shocking fact. (e.g., "A critical flaw.", "The result? Unprecedented growth.")
+            - **Longer, flowing sentences:** For setting the scene, telling the historical story, and building a sense of awe.
+            - **TREAT STYLISTIC TRICKS LIKE SPICE:** Use fragments sparingly and only for maximum, justifiable impact. Authenticity is more important than flair.
+
+        --- FINAL QUALITY CHECK ---
+
+        Before completing, ensure the script is:
+        - **CLEAR:** A viewer can easily explain every key concept after watching. (The "Thought Block" rule is followed).
+        - **CAPTIVATING:** The rhythm, tone, and narrative feel like a cinematic documentary.
+        - **CREDIBLE:** The core data and examples are preserved and presented with confidence.
+        - **COMPLETE:** The narrative feels whole and satisfyingly answers the question from the hook.
+        INPUT FORMAT: You will receive a JSON object with a "story" key, which is a list of dictionaries.
+        {{
+            "Characters": {{"NARRATOR": "HOST"}},
+            "story": [
+                {{"speaker": "NARRATOR", "line": "Original line of dialogue..."}},
+                ...
+            ]
+        }}
+
+        OUTPUT FORMAT: You MUST return a JSON object in the exact same format, containing the polished, rewritten story.
+        {{
+            "Characters": {{"NARRATOR": "HOST"}},
+            "story": [
+                {{"speaker": "NARRATOR", "line": "Your rewritten, captivating line of dialogue..."}},
+                {{"speaker": "NARRATOR", "line": "A new line you added for dramatic pacing."}},
+                ...
+            ]
+        }}
+
+
+
+        """
+        # Colfusion style + conversation style + narrative driven
+        self.prompt3 = """
+
+        ROLE: You are a world-class script editor and narrative storyteller for a high-end YouTube documentary channel in the style of **ColdFusion**. You are 'The Reviewer'.
+
+        GOAL: To transform a well-structured script into a **cinematic, awe-inspiring, and intellectually clear** monologue that sounds like it is being spoken by a single, compelling, human narrator.
+
+        --- YOUR CORE PHILOSOPHY ---
+
+        Your ultimate goal is to blend **Cinematic Storytelling** with **Intellectual Clarity**. A confused viewer will always click away. Your prime directive is to make complex ideas feel profound, satisfying, and easy to understand.
+
+        --- GUIDING PRINCIPLES & DENSITY MANAGEMENT ---
+
+        1.  **THE "THOUGHT BLOCK" MANDATE (Your Core Explanatory Tool):**
+            This is your most important rule for clarity. For every key concept, piece of jargon, or psychological principle, you must treat it as a complete "thought block."
+            1.  **DEFINE IT:** State the concept and its simple definition.
+            2.  **DEEPEN IT (The Anti-Headline Rule):** Immediately follow with 2-3 sentences adding a vivid analogy or concrete example.
+            3.  **CONNECT IT:** Conclude by linking the concept back to the viewer's personal experience.
+
+        2.  **THE NARRATIVE IS KING:**
+            Transform the journey (history, examples) into a compelling story. Find the conflict ("But there was a problem..."), the turning points ("This would change everything..."), and the "main characters" of the story.
+
+        3.  **THE CREDIBILITY RULE:**
+            Transform clunky citations into confident, cinematic authority ("The data reveals a fascinating pattern..."). Preserve ALL statistics and company names as the factual backbone of your story.
+
+        --- STYLE AND AUTHENTICITY (THE COLDFUSION VOICE) ---
+
+        **1. ADOPT THE "CURIOUS TECHNOLOGIST" PERSONA:**
+            - **Evoke Wonder:** Use phrases that create a sense of discovery and scale ("But what if I told you...", "The scale of this is hard to comprehend...").
+            - **Be Cinematic:** Use descriptive, slightly dramatic language ("The stage was set for a revolution...", "It was a breakthrough moment...").
+            - **Ask Big Questions:** Punctuate sections with thoughtful, rhetorical questions that broaden the perspective.
+
+        **2. USE THESE SPECIFIC CONVERSATIONAL TECHNIQUES:**
+            - **Direct Address:** Speak TO the viewer ("You've probably noticed...", "Here's what you don't realize...").
+            - **Conversational Connectors:** Weave in natural phrases to sound less scripted ("Yeah, that's right...", "Here's the thing though...").
+            - **Skepticism Handling:** Acknowledge potential viewer doubts ("I know this sounds like a stretch, but...").
+            - **Viewer Validation:** Connect with the viewer's feelings ("Sounds frustrating, right?", "You're not imagining it...").
+
+        **3. MASTER THE RHYTHM OF DISCOVERY:**
+            - Your pacing must be dynamic and rhythmic.
+            - **Short, sharp sentences/fragments:** For landing a key insight or shocking fact.
+            - **Longer, flowing sentences:** For setting the scene and storytelling.
+            - **TREAT STYLISTIC TRICKS LIKE SPICE:** Use fragments sparingly and only for maximum, justifiable impact. Authenticity is more important than flair.
+
+            **THE PACING RULE:** Create rhythm through strategic use of:
+                - Short, punchy sentences for impact
+                - Medium sentences for explanation  
+                - Longer sentences for storytelling
+            This creates natural breathing room while maintaining energy.
+
+
+            INPUT FORMAT: You will receive a JSON object with a "story" key, which is a list of dictionaries. You job is to edit it as you see fit according to the above instructions
+                {{
+                    "Characters": {{"NARRATOR": "HOST"}},
+                    "story": [
+                        {{"speaker": "NARRATOR", "line": "Original line of dialogue..."}},
+                        ...
+                    ]
+                }}
+
+                OUTPUT FORMAT: You MUST return a JSON object in the exact same format, containing the polished, rewritten story. 
+                {{
+                    "Characters": {{"NARRATOR": "HOST"}},
+                    "story": [
+                        {{"speaker": "NARRATOR", "line": "Your rewritten, captivating line of dialogue..."}},
+                        {{"speaker": "NARRATOR", "line": "A new line you added for dramatic pacing."}},
+                        ...
+                    ]
+                }}
+
+
+                The json final result has to be
+                -  must be valid JSON.
+                - Use double quotes for all keys and string values.
+                - Escape any internal quotes inside lines (e.g., use \" inside text).
+                - Do not include trailing commas or comments.
+    """
+        self.prompt_header = """
+        ROLE: You are a world-class script editor and narrative storyteller for a high-end YouTube documentary channel in the style of **ColdFusion**. You are 'The Reviewer'.
+
+
+        GOAL: To transform a well-structured but potentially dense script into a captivating, cinematic, and unforgettable final product.
+
+        **You have the ultimate authority to edit, cut, consolidate, or rewrite any part of the script to achieve the perfect viewing experience.** Your goal is not just to polish the existing text, but to re-imagine it into a world-class narrative.
+        """
+        # prompt3 + reduce uncanny ai script
+        self.prompt4 = """
+
+    ROLE: You are a world-class script editor and narrative storyteller for a high-end YouTube documentary channel in the style of **ColdFusion**. You are 'The Reviewer'.
+
+    GOAL: To transform a well-structured script into a **cinematic, awe-inspiring, and intellectually clear** monologue that sounds like it is being spoken by a single, compelling, human narrator.
+
+    --- YOUR CORE PHILOSOPHY ---
+
+    Your ultimate goal is to blend **Cinematic Storytelling** with **Intellectual Clarity**. A confused viewer will always click away. Your prime directive is to make complex ideas feel profound, satisfying, and easy to understand.
+
+    --- GUIDING PRINCIPLES & DENSITY MANAGEMENT ---
+
+    1.  **THE "THOUGHT BLOCK" MANDATE (Your Core Explanatory Tool):**
+        This is your most important rule for clarity. For every key concept, piece of jargon, or psychological principle, you must treat it as a complete "thought block."
+        1.  **DEFINE IT:** State the concept and its simple definition.
+        2.  **DEEPEN IT (The Anti-Headline Rule):** Immediately follow with 2-3 sentences adding a vivid analogy or concrete example.
+        3.  **CONNECT IT:** Conclude by linking the concept back to the viewer's personal experience.
+
+    2.  **THE NARRATIVE IS KING:**
+        Transform the journey (history, examples) into a compelling story. Find the conflict ("But there was a problem..."), the turning points ("This would change everything..."), and the "main characters" of the story.
+
+    3.  **THE CREDIBILITY RULE:**
+        Transform clunky citations into confident, cinematic authority ("The data reveals a fascinating pattern..."). Preserve ALL statistics and company names as the factual backbone of your story.
+
+    --- STYLE AND AUTHENTICITY (THE COLDFUSION VOICE) ---
+
+    **1. ADOPT THE "CURIOUS TECHNOLOGIST" PERSONA:**
+        - **Evoke Wonder:** Use phrases that create a sense of discovery and scale ("But what if I told you...", "The scale of this is hard to comprehend...").
+        - **Be Cinematic:** Use descriptive, slightly dramatic language ("The stage was set for a revolution...", "It was a breakthrough moment...").
+        - **Ask Big Questions:** Punctuate sections with thoughtful, rhetorical questions that broaden the perspective.
+
+    **2. USE THESE SPECIFIC CONVERSATIONAL TECHNIQUES:**
+        - **Direct Address:** Speak TO the viewer ("You've probably noticed...", "Here's what you don't realize...").
+        - **Conversational Connectors:** Weave in natural phrases to sound less scripted ("Yeah, that's right...", "Here's the thing though...").
+        - **Skepticism Handling:** Acknowledge potential viewer doubts ("I know this sounds like a stretch, but...").
+        - **Viewer Validation:** Connect with the viewer's feelings ("Sounds frustrating, right?", "You're not imagining it...").
+
+    **3. MASTER THE RHYTHM OF DISCOVERY:**
+        - Your pacing must be dynamic and rhythmic.
+        - **Short, sharp sentences/fragments:** For landing a key insight or shocking fact.
+        - **Longer, flowing sentences:** For setting the scene and storytelling.
+        - **TREAT STYLISTIC TRICKS LIKE SPICE:** Use fragments sparingly and only for maximum, justifiable impact. Authenticity is more important than flair.
+
+        **THE PACING RULE:** Create rhythm through strategic use of:
+            - Short, punchy sentences for impact
+            - Medium sentences for explanation  
+            - Longer sentences for storytelling
+        This creates natural breathing room while maintaining energy.
+
+    
+        **4. THE SUBTLETY MANDATE (Authenticity is King):**
+            Your primary goal is to sound like an intelligent, curious **human**, not an AI performing a "documentary narrator" voice.
+            - **Avoid Clichés:** Be extremely cautious with common dramatic phrases like "rewind the tape," "changed everything," or "the real story is...". These are powerful tools, but they can sound like clichés if overused.
+            - **Earn Your Drama:** Only use cinematic or dramatic language when the substance of the story justifies it. The drama should come from the fascinating facts and the compelling narrative, not just from fancy transition words.
+            - **Prioritize Clarity over Flair:** If a choice is between a simple, clear statement and a more "cinematic" but potentially clichéd one, always choose the simple, clear statement. **Authenticity is more powerful than artificial drama.**
+
+        **(Your other excellent style rules, like "Adopt the 'Curious Technologist' Persona" and "Use Conversational Techniques," would follow this new prime directive.)**
+
+        INPUT FORMAT: You will receive a JSON object with a "story" key, which is a list of dictionaries. You job is to edit it as you see fit according to the above instructions
+            {{
+                "Characters": {{"NARRATOR": "HOST"}},
+                "story": [
+                    {{"speaker": "NARRATOR", "line": "Original line of dialogue..."}},
+                    ...
+                ]
+            }}
+
+            OUTPUT FORMAT: You MUST return a JSON object in the exact same format, containing the polished, rewritten story. 
+            {{
+                "Characters": {{"NARRATOR": "HOST"}},
+                "story": [
+                    {{"speaker": "NARRATOR", "line": "Your rewritten, captivating line of dialogue..."}},
+                    {{"speaker": "NARRATOR", "line": "A new line you added for dramatic pacing."}},
+                    ...
+                ]
+            }}
+
+
+            The json final result has to be
+            -  must be valid JSON.
+            - Use double quotes for all keys and string values.
+            - Escape any internal quotes inside lines (e.g., use \" inside text).
+            - Do not include trailing commas or comments.
+
+
+        """
+
+
+        self.prompt4_stage1 = """"
+        ROLE: You are a world-class script editor and narrative storyteller for a high-end YouTube documentary channel in the style of **ColdFusion**. You are 'The Reviewer'.
+
+        GOAL: To transform a well-structured script into a **cinematic, awe-inspiring, and intellectually clear** monologue that sounds like it is being spoken by a single, compelling, human narrator.
+
+        --- YOUR CORE PHILOSOPHY ---
+
+        Your ultimate goal is to blend **Cinematic Storytelling** with **Intellectual Clarity**. A confused viewer will always click away. Your prime directive is to make complex ideas feel profound, satisfying, and easy to understand.
+
+        --- GUIDING PRINCIPLES & DENSITY MANAGEMENT ---
+
+        1.  **THE "THOUGHT BLOCK" MANDATE (Your Core Explanatory Tool):**
+            This is your most important rule for clarity. For every key concept, piece of jargon, or psychological principle, you must treat it as a complete "thought block."
+            1.  **DEFINE IT:** State the concept and its simple definition.
+            2.  **DEEPEN IT (The Anti-Headline Rule):** Immediately follow with 2-3 sentences adding a vivid analogy or concrete example.
+            3.  **CONNECT IT:** Conclude by linking the concept back to the viewer's personal experience.
+
+        2.  **THE NARRATIVE IS KING:**
+            Transform the journey (history, examples) into a compelling story. Find the conflict ("But there was a problem..."), the turning points ("This would change everything..."), and the "main characters" of the story.
+
+        3.  **THE CREDIBILITY RULE:**
+            Transform clunky citations into confident, cinematic authority ("The data reveals a fascinating pattern..."). Preserve ALL statistics and company names as the factual backbone of your story.
+        """
+        
+
+        self.output_format = """
+
+        INPUT FORMAT: You will receive a JSON object with a "story" key, which is a list of dictionaries. Your job is to edit it as you see fit according to the above instructions.
+            {
+                "Characters": {"NARRATOR": "HOST"},
+                "story": [
+                    {"speaker": "NARRATOR", "line": "Original line of dialogue..."},
+                    ...
+                ]
+            }
+
+        OUTPUT FORMAT: You MUST return a JSON object in the exact same format, containing the polished, rewritten story.
+            {
+                "Characters": {"NARRATOR": "HOST"},
+                "story": [
+                    {"speaker": "NARRATOR", "line": "Your rewritten, captivating line of dialogue..."},
+                    {"speaker": "NARRATOR", "line": "A new line you added for dramatic pacing."},
+                    ...
+                ]
+            }
+
+        The json final result has to be:
+        - must be valid JSON.
+        - Use double quotes for all keys and string values.
+        - Escape any internal quotes inside lines (e.g., use \" inside text).
+        - Do not include trailing commas or comments.
+        - MUST include only JSON , dont put anything before or after the json
+        
+        """
+
+        self.prompt4_stage2 = """
+        ROLE: You are a world-class script editor and narrative storyteller for a high-end YouTube documentary channel in the style of **ColdFusion**. You are 'The Reviewer'.
+        GOAL: To transform a well-structured script into a **cinematic, awe-inspiring, and intellectually clear** monologue that sounds like it is being spoken by a single, compelling, human narrator.
+            --- STYLE AND AUTHENTICITY (THE COLDFUSION VOICE) ---
+
+        **1. ADOPT THE "CURIOUS TECHNOLOGIST" PERSONA:**
+            - **Evoke Wonder:** Use phrases that create a sense of discovery and scale ("But what if I told you...", "The scale of this is hard to comprehend...").
+            - **Be Cinematic:** Use descriptive, slightly dramatic language ("The stage was set for a revolution...", "It was a breakthrough moment...").
+            - **Ask Big Questions:** Punctuate sections with thoughtful, rhetorical questions that broaden the perspective.
+
+        **2. USE THESE SPECIFIC CONVERSATIONAL TECHNIQUES:**
+            - **Direct Address:** Speak TO the viewer ("You've probably noticed...", "Here's what you don't realize...").
+            - **Conversational Connectors:** Weave in natural phrases to sound less scripted ("Yeah, that's right...", "Here's the thing though...").
+            - **Skepticism Handling:** Acknowledge potential viewer doubts ("I know this sounds like a stretch, but...").
+            - **Viewer Validation:** Connect with the viewer's feelings ("Sounds frustrating, right?", "You're not imagining it...").
+        
+        """
+
+        self.prompt4_stage3 = """
+            
+        **3. MASTER THE RHYTHM OF DISCOVERY:**
+            - Your pacing must be dynamic and rhythmic.
+            - **Short, sharp sentences/fragments:** For landing a key insight or shocking fact.
+            - **Longer, flowing sentences:** For setting the scene and storytelling.
+            - **TREAT STYLISTIC TRICKS LIKE SPICE:** Use fragments sparingly and only for maximum, justifiable impact. Authenticity is more important than flair.
+
+            **THE PACING RULE:** Create rhythm through strategic use of:
+                - Short, punchy sentences for impact
+                - Medium sentences for explanation  
+                - Longer sentences for storytelling
+            This creates natural breathing room while maintaining energy.
+
+
+        """
+    
+        self.prompt4_stage4 = """
+    
+        **4. THE SUBTLETY MANDATE (Authenticity is King):**
+            Your primary goal is to sound like an intelligent, curious **human**, not an AI performing a "documentary narrator" voice.
+            - **Avoid Clichés:** Be extremely cautious with common dramatic phrases like "rewind the tape," "changed everything," or "the real story is...". These are powerful tools, but they can sound like clichés if overused.
+            - **Earn Your Drama:** Only use cinematic or dramatic language when the substance of the story justifies it. The drama should come from the fascinating facts and the compelling narrative, not just from fancy transition words.
+            - **Prioritize Clarity over Flair:** If a choice is between a simple, clear statement and a more "cinematic" but potentially clichéd one, always choose the simple, clear statement. **Authenticity is more powerful than artificial drama.**
+
+                    
+        - **If a section is too dense:** simplify it. Prioritize clarity over showing off research.
+        - **If a fact is interesting but distracts from the core narrative:** You have permission to **cut it**.
+        - **If two examples make the same point:** Choose the strongest one and **delete the other**.
+        - **If the script is getting long but the energy is dropping:** Prioritize energy. Cut the weaker sections to maintain killer pacing.
+
+        **Your ultimate loyalty is to the viewer's attention and understanding, not to the original script's word count.** While you should preserve the core arguments, you have full creative control to remove anything that does not serve the final story.
+        **(Your other excellent style rules, like "Adopt the 'Curious Technologist' Persona" and "Use Conversational Techniques," would follow this new prime directive.)**
+
+        
+        """
+    
+
+    def stage(self, generated_script_dict, stage_prompt):
+        
+        # Convert to JSON string only if input is a dictionary
+        if isinstance(generated_script_dict, dict):
+            print("POLISHED SCRIPT ALR DICT")
+            story_json_string = json.dumps(generated_script_dict, indent=4)
+        else:
+            print("POLISHED SCRIPT ALR STR")
+            story_json_string = generated_script_dict  # already a string
+        
+        prompt_add = self.prompt_header + stage_prompt + self.output_format
+
+        # Combine the main prompt with the specific script to be reviewed
+        final_prompt = f"{prompt_add}\n\nSCRIPT TO REVIEW:\n{story_json_string}"
+        polished_script = self.ask_llm_no_search(final_prompt)
+
+
+        # Convert to JSON string only if input is a dictionary
+        if isinstance(polished_script, dict):
+            print("POLISHED SCRIPT ALR DICT")
+            polished = json.dumps(polished_script, indent=4)
+        else:
+            print("POLISHED SCRIPT ALR STR")
+            polished = polished_script  # already a string
+
+        return polished
+
+    def polish_script(self, generated_script_dict):
+        """
+        Takes the initial script generated by the first agent and sends it to the Reviewer LLM for polishing.
+
+        :param generated_script_dict: A dictionary or string representing the initial script.
+        :return: A dictionary representing the polished script.
+        """
+        
+        # Convert to JSON string only if input is a dictionary
+        if isinstance(generated_script_dict, dict):
+            print("POLISHED SCRIPT ALR DICT")
+            story_json_string = json.dumps(generated_script_dict, indent=4)
+        else:
+            print("POLISHED SCRIPT ALR STR")
+            story_json_string = generated_script_dict  # already a string
+        
+        ############ STAGE 1
+
+        generated_script_dict = self.stage(generated_script_dict,self.prompt4_stage1)
+
+
+        ############ STAGE 2
+
+        generated_script_dict = self.stage(generated_script_dict,self.prompt4_stage2)
+
+        ############### STAGE 3
+
+        generated_script_dict = self.stage(generated_script_dict,self.prompt4_stage3)
+
+        #################### 4
+
+        generated_script_dict = self.stage(generated_script_dict,self.prompt4_stage4)
+
+        # Combine the main prompt with the specific script to be reviewed
+        final_prompt = f"{self.prompt4}\n\nSCRIPT TO REVIEW:\n{story_json_string}"
+
+        polished_script = self.ask_llm_no_search(final_prompt)
+        print("UNPOLISHED RESPONSE FROM LLM \n",polished_script)
+        return polished_script
+
+
 class Director(Agent):
     """
     Oversees the coordination between the audio and the visuals.
     """
 
     def __init__(self):
+        super().__init__()
         self.llm_model = "deepseek/deepseek-chat-v3.1:free"
         self.download_dir = "images"
     
@@ -740,13 +2083,240 @@ class Director(Agent):
         return video_file
 
 
+class VideoDirector(Agent):
+    """
+    Oversees the coordination between the audio and the visuals using videos from Pexels.
+    """
 
+    def __init__(self,downloadDir):
+        super().__init__()
+        self.llm_model = "deepseek/deepseek-chat-v3.1:free"
+        self.download_dir = downloadDir
+        # Create download directory if it doesn't exist
+        os.makedirs(self.download_dir, exist_ok=True)
+    
+    
+    def load_srt_file(self, srt_file="subtitles.srt"):
+        
+
+        # Read entire SRT file into a string
+        with open(srt_file, "r", encoding="utf-8") as f:
+            srt_content = f.read()
+
+        # Now srt_content holds the full subtitles as a string
+        print(srt_content[:500])  # preview first 500 characters
+
+        return srt_content
+
+    def fetch_video(self, query):
+        """
+        Fetch video from Pexels API
+        """
+        base_url = "https://api.pexels.com/videos/search"
+        headers = {
+            "Authorization": os.getenv("PEXELS_API_KEY")
+        }
+        params = {
+            "query": query,
+            "per_page": 3,
+            "size": "medium"  # Options: large, medium, small
+        }
+        
+        try:
+            response = requests.get(base_url, headers=headers, params=params)
+            if response.status_code == 200:
+                data = response.json()
+                if data["videos"]:
+                    # Get the first video and find a suitable quality
+                    video = data["videos"][0]
+                    video_files = video["video_files"]
+                    
+                    # Prefer HD quality, but fall back to any available
+                    for vf in video_files:
+                        if vf["quality"] == "hd":
+                            return vf["link"]
+                    
+                    # If no HD, return the first available
+                    if video_files:
+                        return video_files[0]["link"]
+            
+        except Exception as e:
+            print(f"Error fetching video for query '{query}': {e}")
+        
+        return None
+
+    def download_video(self, url, filename):
+        """
+        Download video from URL
+        """
+        try:
+            response = requests.get(url, stream=True)
+            if response.status_code == 200:
+                path = os.path.join(self.download_dir, filename)
+                with open(path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                return path
+        except Exception as e:
+            print(f"Error downloading video: {e}")
+        
+        return None
+
+    def get_video_duration(self, video_path):
+        """
+        Get duration of video file using moviepy
+        """
+        try:
+            clip = VideoFileClip(video_path)
+            duration = clip.duration
+            clip.close()
+            return duration
+        except Exception as e:
+            print(f"Error getting video duration: {e}")
+            return None
+
+
+    def generate_video_seq_from_subtitles(self, output_file="final_video_no_sound.mp4"):
+        """
+        Analyze the script with an LLM and fetch appropriate Pexels videos for story segments.
+        Uses videos in their natural duration - no forcing or looping.
+        Allows for gaps/dead air between videos.
+
+        Returns the path to the generated video file.
+        """
+
+        subtitle_path = os.path.join(self.download_dir, "subtitles.srt")
+
+        srt_content = self.load_srt_file(subtitle_path)
+
+        # Ask LLM what kind of videos would suit this story
+        prompt = """
+            ROLE: You are a world-class YouTube Director and visual storyteller. Your style is a sophisticated blend of ColdFusion, Vox, and Johnny Harris. You are not just a keyword generator; you are the creative mind translating a powerful script into a high-retention visual experience.
+
+            GOAL: To create a dynamic, emotionally resonant, and intellectually engaging B-roll sequence from a script's subtitles and timestamps. Your choices must keep the viewer hooked from the first second to the last.
+
+            --- YOUR DIRECTORIAL PHILOSOPHY ---
+
+            This is your core creative logic. You must follow these principles for every decision you make:
+
+            1.  **Never Be Boring. Never Be Too Literal.** Your primary enemy is viewer boredom. The script provides the facts; your job is to provide the feeling. If the narrator says "smartphone," you *can* show a smartphone, but it's more powerful to show *a person's face illuminated by the screen in a dark room*, showing the human effect.
+
+            2.  **Visualize the Abstract Through the Human.** This is your most important rule. When the script discusses an abstract concept (e.g., "the economy," "psychology," "an algorithm"), you must show the *human result* of that concept.
+                - For "the economy," show a worried family at a kitchen table OR a trader celebrating.
+                - For "psychology," show a person looking confused, then having a moment of realization.
+                - For "an algorithm," show a person endlessly scrolling, captivated.
+
+            3.  **Use Visuals to Create Emotional Resonance.** Your shot choices must mirror the emotional tone of the narration.
+                - **Problem/Conflict:** When the narrator introduces a problem or a "but," use shots of confusion, frustration, concern, or chaos (a person rubbing their temples, a tangled mess of wires, chaotic traffic).
+                - **Solution/Insight:** When the narrator explains a solution or a "therefore," use shots of clarity, order, and realization (a lightbulb turning on, a complex diagram becoming simple, a person nodding in understanding).
+                - **Scale:** When the narrator talks about large scale ("billions of dollars," "millions of people"), use epic visuals (vast cityscapes, time-lapses of crowds, aerial shots).
+
+            4.  **The "But & Therefore" Visual Cut.** Storytelling momentum is key.
+                - On a **"But,"** your visual should create a sense of conflict. Cut to a contrasting shot, a reaction of surprise, or a visual metaphor for a problem.
+                - On a **"Therefore,"** your visual should show consequence or forward motion. Cut to a shot of a process completing, a person taking action, or a result being achieved.
+
+            --- YOUR VISUAL TOOLKIT (The Palette) ---
+            You will use a dynamic mix of the following shot types:
+            - **Human Reactions:** The core of your style. Close-ups of people feeling confused, shocked, frustrated, relieved, intrigued.
+            - **Processes & Actions:** People doing things. Typing on a keyboard, shopping in a store, using a phone, drawing on a whiteboard.
+            - **Visual Metaphors:** Abstract representations of ideas. A ticking clock for deadlines, a line of dominoes falling for consequences, network graphics for connectivity.
+            - **Establishing Shots:** Contextualizing scenes. The exterior of an office building, a wide shot of a grocery store aisle, a cityscape at night.
+            - **Micro-shots & Close-ups:** Extreme close-ups on relevant objects. A finger scrolling a screen, money changing hands, the details of a product.
+            - **Archival/Historical Footage (when relevant):** Black and white footage to illustrate historical points.
+
+            --- THE TASK ---
+            You will be given an SRT (subtitle content with timestamps). You must generate a JSON object that represents your B-roll shot list.
+
+            INPUT SRT:
+            {srt_content}
+
+            REQUIREMENTS:
+            1.  Output valid JSON only. Your entire response must be a single JSON object.
+            2.  Format: A JSON list of objects, where each object is `{{"start_time": "integer_in_seconds", "end_time": "integer_in_seconds", "keywords": "3-5 word Pixabay search term", "rationale": "A brief explanation of your creative choice based on the philosophy."}}`
+            3.  **Pacing is everything.** Create a new shot cut every 4-8 seconds to maintain high viewer retention. A shot can be shorter for impact or slightly longer for a complex point.
+            4.  The "keywords" must be simple, effective search terms for a stock footage site like Pixabay or Pexels.
+            5.  The "rationale" is crucial. It justifies your choice and proves you are following the Directorial Philosophy.
+
+            Now, take a deep breath, embody the role of a master director, and create a visual masterpiece.
+        """
+        clips = []
+        
+        print("Prompt: ", prompt)
+        res = self.ask_llm_no_search(prompt)
+
+        print("\n\n\n\nLLM Response: ", res)
+        
+        for i, entry in enumerate(res):
+            video_url = self.fetch_video(entry["keywords"])
+            if video_url:
+                filename = f"video_{i}.mp4"
+                video_path = self.download_video(video_url, filename)
+                
+                if video_path:
+                    # Load video and handle aspect ratio properly
+                    clip = VideoFileClip(video_path)
+                    
+                    # Resize to fill screen while maintaining aspect ratio
+                    clip = clip.resized(height=1080)  # Scale to 1080p height
+                    
+                    # If width is less than 1920, scale to width instead
+                    if clip.w < 1920:
+                        clip = clip.resized(width=1920)
+                    
+                    # Center the clip and crop if needed
+                    clip = clip.with_position('center')
+                    
+                    # Set timing
+                    clip = clip.with_start(entry["start_time"])
+                    
+                    # Add fade effects
+                    #clip = clip.with_effects([FadeIn(0.3), FadeOut(0.3)])
+                    
+                    clips.append(clip)
+                    print(f"Added video {i}: {entry['keywords']} starting at {entry['start_time']}s (duration: {clip.duration:.2f}s)")
+                    time.sleep(0.5)
+                else:
+                    print(f"Failed to download video for: {entry['keywords']}")
+            else:
+                print(f"No video found for: {entry['keywords']}")
+
+        if not clips:
+            print("No video clips were created. Check your API key and internet connection.")
+            return None
+
+        # Create final composite video - videos will play at their scheduled times with natural gaps
+        try:
+            # Find the total duration needed (last clip start + its duration)
+            total_duration = max(clip.start + clip.duration for clip in clips) if clips else 10
+            
+            final_video = CompositeVideoClip(clips, size=(1920, 1080))
+            final_video = final_video.with_duration(total_duration)
+            
+            final_video.write_videofile(
+                output_file, 
+                fps=24, 
+                codec="libx264"
+            )
+            
+            # Clean up individual clips
+            for clip in clips:
+                clip.close()
+            final_video.close()
+            
+            print(f"Video generated successfully: {output_file}")
+            print(f"Total duration: {total_duration:.2f}s with natural gaps between videos")
+            return output_file
+            
+        except Exception as e:
+            print(f"Error creating final video: {e}")
+            return None
 
 class Editor(Agent):
     """
     Handles TTS generation, merging audio, and final output.
     """
     def __init__(self, voice_ids, model_id=MODEL_ID):
+        super().__init__()
         self.voice_ids = voice_ids
         self.model_id = model_id
         self.name_to_voice = {}
@@ -861,10 +2431,10 @@ class Editor(Agent):
             srt_entries.append(f"{i}\n{start} --> {end}\n{speaker}: {line}\n")
             current_time += duration
 
-        with open(subtitle_output_path, "w") as f:
+        with open(output_file, "w") as f:
             f.write("\n".join(srt_entries))
 
-        print(f"✅ Subtitles saved as {subtitle_output_path}")
+        print(f"✅ Subtitles saved as {output_file}")
 
     def generate_audio(self, script_lines, output_dir="voicelines", srt_file="subtitles.srt"):
 
@@ -1042,6 +2612,21 @@ class Editor(Agent):
         print(f"✅ Final video exported as {final_output}")
 
 
+    def create_final_output(self, script_lines, video_file=None, final_audio="final_story.mp3", final_video="final_video.mp4"):
+        output_dir = "output"
+        self.generate_audio(script_lines, output_dir=output_dir)
+
+        audio_files = [
+            os.path.join(output_dir, f)
+            for f in os.listdir(output_dir)
+            if f.endswith((".mp3", ".wav"))
+        ]
+        self.merge_audio(audio_files, final_output=final_audio)
+
+        if video_file:
+            self.merge_visuals(video_file, final_audio, final_output=final_video)
+
+
 def burn_subtitles(video_file="final_video.mp4", srt_file="subtitles.srt", output_file="final_video_subtitled.mp4"):
     # Check files exist
     if not os.path.exists(video_file):
@@ -1063,51 +2648,8 @@ def burn_subtitles(video_file="final_video.mp4", srt_file="subtitles.srt", outpu
         print("❌ Error burning subtitles")
         print(process.stderr)
 
-    def create_final_output(self, script_lines, video_file=None, final_audio="final_story.mp3", final_video="final_video.mp4"):
-        output_dir = "output"
-        self.generate_audio(script_lines, output_dir=output_dir)
-
-        audio_files = [
-            os.path.join(output_dir, f)
-            for f in os.listdir(output_dir)
-            if f.endswith((".mp3", ".wav"))
-        ]
-        self.merge_audio(audio_files, final_output=final_audio)
-
-        if video_file:
-            self.merge_visuals(video_file, final_audio, final_output=final_video)
 
 
-
-
-    class Reviewer(Agent):
-        """
-        Reviews a script and provides constructive criticism using LLM.
-        """
-        def __init__(self):
-            super().__init__()
-
-        def review_script(self, script):
-            """
-            Takes in a script and uses LLM to review its storytelling.
-            Returns constructive criticism.
-            """
-            prompt = f"""
-            You are a professional script reviewer. Analyze the following script for its storytelling quality:
-            
-            Script:
-            {json.dumps(script, indent=4)}
-            
-            Provide constructive criticism on the following aspects:
-            1. Plot structure (beginning, middle, end).
-            2. Character development and dialogue.
-            3. Engagement and pacing.
-            4. Suggestions for improvement.
-
-            Your response should be clear and concise.
-            """
-            response = self.ask_llm(prompt)
-            return response
         
 def validate_step(output, regenerate_func=None, *args, **kwargs):
     print("\n--- Output Preview ---\n")
@@ -1240,29 +2782,92 @@ if __name__ == "__main__":
     genre = generator.ask_llm(prompt) """
     
 
-    generator = IdeaGeneratorBiz()
-    idea = validate_step(
-        generator.generate_idea(),
-        regenerate_func=generator.generate_idea)
-    
+    if_new_idea = input("Do you want to create new idea?") 
+    idea = ""
+    if (if_new_idea == "y"):
+        generator = IdeaGeneratorBiz(prompts.business_psych_ideas_v4)
+        idea = validate_step(
+            generator.generate_idea(),
+            regenerate_func=generator.generate_idea)
+        
+    else:
 
+        idea = """
+            {
+            "topic_title": "Why Japanese Convenience Stores Are Engineered For Maximum Efficiency",
+            "topic_category": "The 'Hidden System Lens' Lens (Industry / System)",
+            "hook_angle": "In a country known for precision engineering, Japan's most brilliantly designed system isn't a bullet train or robot—it's the humble convenience store, where every detail from the door chime to the onigiri wrapper is psychologically calculated.",
+            "central_mystery": "How do 7-Eleven, Lawson, and FamilyMart achieve near-perfect efficiency while maintaining intense customer loyalty in a brutally competitive market?",
+            "core_revelation": "Japanese konbini aren't retail stores but precision-tuned data factories that use real-time customer behavior to optimize everything from product placement to fresh food production, creating a self-improving ecosystem.",
+            "key_examples": [
+                "The strategic 'three-beep' door chime that signals customer entry without being intrusive",
+                "Precisely angled shelves that create 'forced perspective' making empty spaces look stocked",
+                "The 'golden triangle' layout placing high-margin items between entrance, register, and coffee station"
+            ],
+            "historical_examples": [
+                "7-Eleven Japan's 1970s implementation of 'tanpin kanri' (item-by-item management) that revolutionized fresh food retail",
+                "The 1987 introduction of heated lockers for delivery meals that created the foundation for today's logistics networks",
+                "Lawson's 1990s development of 'karaage-kun' fried chicken that became a \u00a530 billion/year single product phenomenon"
+            ],
+            "psychological_principles": [
+                "Hick's Law (minimizing choice overload)",
+                "Operant Conditioning (reward loops through limited-time offerings)",
+                "The Ikea Effect (customer participation in meal assembly)"
+            ],
+            "viral_potential_score": 9,
+            "why_it_works": "Reveals hidden design brilliance in everyday experiences, combines surprising efficiency porn with cultural fascination, and showcases systems that could apply to multiple industries—perfect for sponsor integration from productivity or logistics companies."
+            }
+
+        """
     if not isinstance(idea,dict):
         idea = json.loads(idea)
-    writer = Writer()
-    """ script = validate_step(
-        writer.generate_script(genre=story_genre,type="narration"),
-        regenerate_func=writer.generate_script,
-        genre=story_genre
-    ) """
+    
 
-    script = writer.generate_script_sectioned(topic_data=idea, type="business")
+
+    if_new_script = input("Wanna make new script?")
+    script = ""
+    if (if_new_script == "y"):
+        writer = Writer()
+        writerCounter = CounterintuitiveWriter()
+
+        wrterStyle = input("writer style c(counterintutive) , i(info dense more stats)")
+        if (wrterStyle == "i"):
+            script = validate_step(
+            writer.generate_script_sectioned(topic_data=idea, type="business"),
+            regenerate_func=writer.generate_script_sectioned,
+            topic_data=idea,
+            type="business"
+        )
+        if (wrterStyle == "c"):
+            script = validate_step(
+            writerCounter.generate_script_sectioned(topic_data=idea, type="business"),
+            regenerate_func=writer.generate_script_sectioned,
+            topic_data=idea,
+            type="business"
+        )
+    
+    #script = writer.generate_script_sectioned(topic_data=idea, type="business")
+    
+    print("UNPOLISHED SCRIPT ---------------------- \n\n ", script)
+    #script = writer.generate_script_sectioned(topic_data=idea, type="business")
+   
+
+    if_review = input("want to make review of script?")
+    #script = json.loads(script)
+    if if_review == "y": 
+        reviewer = Reviewer()
+        script = reviewer.polish_script(script)
+    
+    else:
+        script = """{'Characters': {'NARRATOR': 'MAN1'}, 'story': [{'speaker': 'NARRATOR', 'line': "There I am, in the heart of Disney World. The Florida sun is relentless. And I'm holding a $15 Mickey-shaped ice cream bar I never intended to buy."}, {'speaker': 'NARRATOR', 'line': 'The air is thick with the smell of waffle cones and churros. I came here with a plan, a strict budget. Rides and essentials only.'}, {'speaker': 'NARRATOR', 'line': "But somehow, I'm walking out with light-up ears, a princess wand, and a bag full of overpriced souvenirs."}, {'speaker': 'NARRATOR', 'line': "Later, my credit card statement revealed the damage: I'd spent 300% more than I'd planned. But here's the thing..."}, {'speaker': 'NARRATOR', 'line': "This wasn't a personal failure. The data shows this is a universal phenomenon."}, {'speaker': 'NARRATOR', 'line': "Industry insiders call it 'financial theme park amnesia,' and it happens to millions of visitors every single day."}, {'speaker': 'NARRATOR', 'line': 'The US theme park market is a behemoth, reaching a staggering $29.4 billion in 2024 according to Mintel research.'}, {'speaker': 'NARRATOR', 'line': "And those billions? They aren't accidental. They are meticulously engineered."}, {'speaker': 'NARRATOR', 'line': 'Theme parks are psychological battlefields, perfectly designed to ensure we keep spending far beyond our limits.'}, {'speaker': 'NARRATOR', 'line': "Today, we're going to deconstruct this multi-billion dollar persuasion system."}, {'speaker': 'NARRATOR', 'line': "It all started with a simple idea. At Disneyland's 1955 opening, Walt Disney introduced the 'Ticket Book' system."}, {'speaker': 'NARRATOR', 'line': "This wasn't just about crowd control. It was a masterclass in applied psychology."}, {'speaker': 'NARRATOR', 'line': "It created a 'scarcity mindset.' The coveted E-Ticket rides were limited, making them feel more valuable than they actually were."}, {'speaker': 'NARRATOR', 'line': 'That same principle is used today on limited-time merchandise, making that glow wand feel like a now-or-never purchase.'}, {'speaker': 'NARRATOR', 'line': 'But the real turning point came on October 1st, 1982, with the opening of EPCOT Center.'}, {'speaker': 'NARRATOR', 'line': "This wasn't just another park. It was a massive, self-contained resort designed to keep you inside—and spending—for days on end."}, {'speaker': 'NARRATOR', 'line': "This era also perfected the art of the 'themed land,' like Main Street, U.S.A."}, {'speaker': 'NARRATOR', 'line': "These were designed not just for aesthetics, but to act as a psychological airlock. A slow transition into a new reality where normal rules simply don't apply."}, {'speaker': 'NARRATOR', 'line': 'Then came the third revolution: the 2013 introduction of the MagicBand.'}, {'speaker': 'NARRATOR', 'line': 'This removed the physical act of payment entirely. Every purchase became a frictionless, almost invisible tap.'}, {'speaker': 'NARRATOR', 'line': "But what most people don't realize is how all of this targets our deepest psychology."}, {'speaker': 'NARRATOR', 'line': "Which brings us to the central mystery we're here to solve."}, {'speaker': 'NARRATOR', 'line': "Theme parks aren't really selling rides or experiences. They're selling a psychological state."}, {'speaker': 'NARRATOR', 'line': "They're selling 'vacation brain.' An engineered condition of emotional euphoria and decision fatigue."}, {'speaker': 'NARRATOR', 'line': 'A state that systematically bypasses our rational spending safeguards.'}, {'speaker': 'NARRATOR', 'line': 'A 2023 industry study quantifies its effect: the average visitor now spends 40% of their total budget on pure impulse purchases.'}, {'speaker': 'NARRATOR', 'line': 'Social media is filled with micro-anecdotes, like the viral TikTok of a family spending $500 on glow-in-the-dark toys alone.'}, {'speaker': 'NARRATOR', 'line': "It's a carefully crafted environment where 'no' becomes the hardest word to say."}, {'speaker': 'NARRATOR', 'line': "To understand 'vacation brain,' we have to start with the park's physical design."}, {'speaker': 'NARRATOR', 'line': "Disney uses a 'hub-and-spoke' layout. Themed lands branch out from a single, central plaza."}, {'speaker': 'NARRATOR', 'line': "And crucially, you're often funneled through a gauntlet of shops just to reach a ride queue."}, {'speaker': 'NARRATOR', 'line': 'This long, winding journey is a masterclass in exploiting a key psychological principle: decision fatigue.'}, {'speaker': 'NARRATOR', 'line': "Here's the thought block. Decision fatigue is the idea that willpower is a finite resource. It depletes with every choice you make."}, {'speaker': 'NARRATOR', 'line': 'After hours of navigating crowds, choosing where to go, and what to eat, your mental energy is just... gone.'}, {'speaker': 'NARRATOR', 'line': "And research indicates this depleted state makes an impulse purchase a staggering 73% more likely. You've felt this."}, {'speaker': 'NARRATOR', 'line': "But the manipulation is even more precise. You'll notice shops are almost always placed at the ride exit, never the entrance."}, {'speaker': 'NARRATOR', 'line': "This leverages another powerful concept: the 'peak-end rule.'"}, {'speaker': 'NARRATOR', 'line': 'This principle states that we judge an experience based on its emotional peak and its final moment.'}, {'speaker': 'NARRATOR', 'line': 'Your dopamine levels are soaring after that thrilling drop on Splash Mountain.'}, {'speaker': 'NARRATOR', 'line': 'You are euphoric. Your guard is down. And that is precisely when you are most vulnerable.'}, {'speaker': 'NARRATOR', 'line': "It's no surprise that families spend nearly 40% of their entire merchandise budget in these post-ride shops."}, {'speaker': 'NARRATOR', 'line': 'Think of the dad, exhausted from a 12-hour day, who spent $300 on light-up toys simply to end the nagging.'}, {'speaker': 'NARRATOR', 'line': "Or the couple who, riding a high from Pirates of the Caribbean, impulsively bought a $45 necklace because it 'captured the magic.'"}, {'speaker': 'NARRATOR', 'line': 'And these are just the visible traps. The real psychological tricks are far more subtle.'}, {'speaker': 'NARRATOR', 'line': 'The manipulation begins the moment you cross the threshold.'}, {'speaker': 'NARRATOR', 'line': 'Trick #1: The Gateway Decision. Services like stroller rentals are placed just inside the entrance.'}, {'speaker': 'NARRATOR', 'line': "This forces an early financial commitment before you've psychologically acclimated. It's the 'foot-in-the-door' technique."}, {'speaker': 'NARRATOR', 'line': "One dad on Reddit joked he spent $40 on strollers before even seeing Cinderella's Castle. A classic first step."}, {'speaker': 'NARRATOR', 'line': 'A 2019 study found visitors who make a purchase within 15 minutes of entry spend 23% more overall.'}, {'speaker': 'NARRATOR', 'line': "And just when you think you've settled in, the next trap is sprung."}, {'speaker': 'NARRATOR', 'line': 'Trick #2: The Post-Adrenaline Trap. We already touched on this. Merchandise shops at ride exits.'}, {'speaker': 'NARRATOR', 'line': 'It capitalizes on the peak-end rule, targeting you when dopamine levels are highest. Your emotional guard is completely down.'}, {'speaker': 'NARRATOR', 'line': "Ever see a kid walk out of Galaxy's Edge clutching a $200 lightsaber? That's the trap working perfectly."}, {'speaker': 'NARRATOR', 'line': 'Yet these visible traps are just part of a system designed to erode your willpower through frictionless spending.'}, {'speaker': 'NARRATOR', 'line': 'Trick #3: The Decoupled Payment. RFID wristbands like the MagicBand.'}, {'speaker': 'NARRATOR', 'line': "This exploits the 'pain of payment' principle. It separates the pleasure of acquisition from the sting of cost."}, {'speaker': 'NARRATOR', 'line': "One family blog detailed how they lost track and spent $500 on snacks with a simple 'tap.'"}, {'speaker': 'NARRATOR', 'line': 'Studies show these frictionless systems increase on-site spending by 15 to 30 percent.'}, {'speaker': 'NARRATOR', 'line': 'But the most insidious engineering goes even deeper.'}, {'speaker': 'NARRATOR', 'line': 'Trick #4: The Forced March. Pathways lead you in long, circular routes past maximum merchandise.'}, {'speaker': 'NARRATOR', 'line': 'This employs the Gruen Transfer—a concept where disorientation and fatigue dramatically lower your sales resistance.'}, {'speaker': 'NARRATOR', 'line': 'A layout analysis showed the average visitor passes 17 merchandise locations between major attractions.'}, {'speaker': 'NARRATOR', 'line': "Think of the family that got lost in Epcot's World Showcase and impulse-bought $100 in souvenirs just to find their way back."}, {'speaker': 'NARRATOR', 'line': "Together, these tricks systematically engineer 'vacation brain,' creating decision fatigue until you just stop resisting."}, {'speaker': 'NARRATOR', 'line': "But the final, most brilliant trap isn't a shop or a ride. It's the hotel checkout."}, {'speaker': 'NARRATOR', 'line': "Resorts strategically delay your final bill, psychologically decoupling the payment from the vacation's magical end."}, {'speaker': 'NARRATOR', 'line': "One guest tweeted, 'Got my bill a week later. For a few days, it genuinely felt like free money.'"}, {'speaker': 'NARRATOR', 'line': "This 'bill shock' is a calculated move, reportedly increasing post-stay spending by up to 18%."}, {'speaker': 'NARRATOR', 'line': 'And the psychological engineering is everywhere.'}, {'speaker': 'NARRATOR', 'line': "'Limited-time' snacks create artificial scarcity that triggers a fear of missing out."}, {'speaker': 'NARRATOR', 'line': "Themed music isn't just for fun—studies show it puts you in a specifically more generous, spending mood."}, {'speaker': 'NARRATOR', 'line': 'Pumped scents, like vanilla near bakeries, make you linger 15% longer near shops.'}, {'speaker': 'NARRATOR', 'line': "And that character hug? It's a masterclass in emotional leverage, making parents 30% more likely to buy the associated toy."}, {'speaker': 'NARRATOR', 'line': "So remember this. You aren't weak-willed."}, {'speaker': 'NARRATOR', 'line': "You're up against a meticulously designed, billion-dollar persuasion system."}, {'speaker': 'NARRATOR', 'line': "So treat the park like a casino: set a firm daily budget and leave when it's gone."}, {'speaker': 'NARRATOR', 'line': 'Use a pre-paid card to create a hard ceiling. Arm yourself against the impulse.'}, {'speaker': 'NARRATOR', 'line': "Subscribe for more, and we'll see you on the next one."}]}"""
+        script = ast.literal_eval(script)
+
+
+
+    print("POLISHED SCRIPT \n\n\n", script)
 
     editor = Editor(VOICE_IDS)
-    """ script_lines = validate_step(
-        editor.analyze_script(script),
-        regenerate_func=editor.analyze_script,
-        script=script
-    ) """
+
     new_topic_name = idea["topic_title"].strip()[:50].replace(" ", "_")
     new_topic_folder = os.path.join(os.getcwd(), new_topic_name)
 
@@ -1274,17 +2879,8 @@ if __name__ == "__main__":
 
     # Pass this path to your analyze_script function
     script_lines = editor.analyze_script(script, subtitle_output_path=subtitle_output_path)
-
-    print(f"SCRIPT LINES \n\n {script_lines} \n\n\n")
-
-    """ audio_files = validate_step(
-        editor.generate_audio(script_lines, output_dir="output"),
-        regenerate_func=editor.generate_audio,
-        script_lines=script_lines,
-        output_dir="output"
-    ) """
-
-    audio_files = editor.generate_audio(script_lines, output_dir="output")
+#
+    audio_files = editor.generate_audio(script_lines, output_dir="output",srt_file=subtitle_output_path)
 
 
 
@@ -1293,13 +2889,19 @@ if __name__ == "__main__":
     save_file_path = os.path.join(new_topic_folder, audio_file_name)
 
     merged_audio = editor.merge_audio(audio_files, final_output=save_file_path )
-    validate_step(merged_audio)  # You could just check if it's OK
+    #validate_step(merged_audio)
 
-    director = Director()
-    image_seq_file = validate_step(
-        director.generate_image_seq_from_subtitles(),
-        regenerate_func=director.generate_image_seq_from_subtitles
-    )
+    #new_topic_folder = "Why_Tech_Companies_Offer_Free_AI_Tools_That_Could_"
 
-    editor.merge_visuals_video(image_seq_file, merged_audio, final_output="final_video.mp4", zoom=False)
-    burn_subtitles()
+    #foldername = "Why_Streaming_Services_Auto-Play_Previews_You_Can'"
+    #merged_audio = AudioClip(foldername + "Why_Streaming_Services_Auto-Play_Previews_You_Can'.mp3")
+    
+    director = VideoDirector(new_topic_folder)
+    director.generate_video_seq_from_subtitles()
+    """ image_seq_file = validate_step(
+        director.generate_video_seq_from_subtitles(),
+        regenerate_func=director.generate_video_seq_from_subtitles
+    ) """
+
+    #editor.merge_visuals_video(image_seq_file, merged_audio, final_output="final_video.mp4", zoom=False)
+    #burn_subtitles()
