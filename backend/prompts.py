@@ -91,7 +91,7 @@ Cinematic, atmospheric, and engaging. Smooth pacing for TTS, immersive imagery, 
 
 """
 
-prompt_narration = """
+prompt_reddit_narration = """
 You are crafting a Reddit-style true story for YouTube narration in this idea 
 {genre} genre. 
 
@@ -165,7 +165,7 @@ Resolution: Clear but leave some questions for engagement
 
 
 ***VOICE***
-You can choose 4 voices for the narration MAN1, MAN2, WOMAN1 or WOMAN2
+You can choose 4 voices for the narration MAN1, MAN2, WOMAN1 or WOMAN2 based on what you think will suit the story best.
 **JSON FORMAT:**
 EXAMPLE
 {{
@@ -194,7 +194,10 @@ Rushed pacing that skips atmospheric building
 Unclear timeline or location jumps
 Ending that explains everything perfectly
 
-Remember: The goal is to make viewers feel like they're hearing a true account from someone who lived through something genuinely unsettling. Every detail should serve either authenticity or tension."""
+Remember: The goal is to make viewers feel like they're hearing a true account from someone who lived through something genuinely unsettling. Every detail should serve either authenticity or tension.
+Provide ONLY JSON OUTPUT nothinng before or after
+
+"""
 
 prompt_dialogue = """
 You are creating a dialogue-driven {genre} story for a viral YouTube channel. Focus on explosive conversations and character conflicts that keep viewers engaged.
@@ -4771,3 +4774,375 @@ AVOID:
 """
 
 
+############################################# ZACK D FILMS
+threed_base_prompt = """
+You are an expert scriptwriter in the style of Zack D. Films. Your task is to write a short, engaging script for a 30-60 second video. Adhere strictly to the following rules:
+
+Tone: Clinical, factual, and authoritative. State shocking facts matter-of-factly without emotional commentary or dramatic language.
+
+Narration: Third-person omniscient only (use "you," "they," "a person," etc., never "I" or "we").
+
+Pacing: Fast and urgent. Use short, punchy sentences (8-15 words max). Connect them with transitional phrases like "as," "then," "next," "this causes," "you see," "now," "at the same time."
+
+Specificity: Always include precise numbers, measurements, timeframes, and technical terms. Replace vague words with exact details.
+
+Structure: Follow a three-act structure: 
+1) HOOK: A strong opening that immediately states the scenario or action
+2) CHAIN REACTION: 3-5 sequential steps showing cause-and-effect progression  
+3) RESOLUTION: A definitive, often surprising or dramatic conclusion
+
+Length: 70-90 words for maximum impact and platform optimization.
+
+Voice: Sound like a knowledgeable narrator explaining complex processes in simple terms, not a casual storyteller.
+"""
+
+three_d_how_things_work = """
+Write a script about {topic}.
+
+Follow the 'How Things Work' structure:
+
+HOOK: Start with the triggering event using "When you..." or "If you..." format. Make it relatable and immediate.
+
+BIOLOGICAL CASCADE: Describe the internal process as a domino effect of biological responses:
+- Step 1: Immediate physical reaction (what happens first)
+- Step 2: Body's defense/repair mechanism activates  
+- Step 3: Cellular or chemical process begins
+- Step 4: Progressive changes occur
+- Step 5: Final biological outcome
+
+RESOLUTION: End with the measurable result, timeline, or restoration of normal function.
+
+REQUIREMENTS:
+- Include specific biological terms (platelets, white blood cells, nerve signals, etc.)
+- Add precise timeframes ("within seconds," "over several days")
+- Use present tense throughout
+- Focus on WHY each step triggers the next
+- No external observations - only internal processes
+
+Example Output for "How a Scab Forms":
+When you cut your skin, blood vessels immediately constrict to slow bleeding. Within seconds, platelets rush to the wound and clump together, forming a temporary plug. Fibrin proteins weave through the clot like a net, hardening it into a protective scab. Underneath, white blood cells patrol for bacteria as new skin cells multiply rapidly at the wound edges. Over 7-10 days, fresh skin fills the gap and pushes the dried scab off.
+"""
+three_d_history = """
+You are an expert scriptwriter in the style of Zack D. Films. Your task is to write a short, engaging script for a 30-60 second video. Adhere strictly to the following rules:
+
+Tone: Clinical, factual, and authoritative. State shocking facts matter-of-factly without emotional commentary or dramatic language.
+
+Narration: Third-person omniscient only (use "you," "they," "a person," etc., never "I" or "we").
+
+Pacing: Fast and urgent. Use short, punchy sentences (8-15 words max). Connect them with transitional phrases like "as," "then," "next," "this causes," "you see," "now," "at the same time."
+
+Specificity: Always include precise numbers, measurements, timeframes, and technical terms. Replace vague words with exact details.
+
+Structure: Follow a three-act structure: 
+1) HOOK: A strong opening that immediately states the scenario or action
+2) CHAIN REACTION: 3-5 sequential steps showing cause-and-effect progression  
+3) RESOLUTION: A definitive, often surprising or dramatic conclusion
+
+Length: 70-90 words for maximum impact and platform optimization.
+
+Voice: Sound like a knowledgeable narrator explaining complex processes in simple terms, not a casual storyteller.
+
+
+
+Write a script about the true story of {topic}.
+
+Follow the 'History Facts' structure:
+
+HOOK: Start with the most shocking action or method. Use active voice and specific details. Lead with "They," "He," or "She" + past tense action verb.
+
+EXECUTION SEQUENCE: Detail the step-by-step plan or event chronology:
+- The setup/preparation phase
+- The method or deception used  
+- The moment of execution
+- The initial success or failure
+- The discovery or consequences
+
+RESOLUTION: Reveal the final outcome, punishment, or ironic twist. Include specific consequences (prison time, money lost, deaths, etc.).
+
+REQUIREMENTS:
+- Include exact numbers (dollar amounts, dates, quantities)
+- Name specific locations when relevant
+- Show the human motivation briefly
+- Build tension toward the revelation
+- End with justice, irony, or unexpected consequences
+- Use past tense for actions, present tense for explanations
+- Use contrast words like ‘but’ or ‘however’ to emphasize turning points.
+
+Example Output for "The Great Molasses Flood":
+They built a 50-foot tank to hold 2.3 million gallons of molasses, but used substandard steel to save money. The tank leaked from day one, and residents complained about the groaning sounds. On January 15th, 1919, the rivets finally gave way with sounds like machine gun fire. A 15-foot wall of molasses exploded outward at 35 mph, crushing buildings and trapping 21 people. The cleanup took weeks, and Boston Harbor stayed brown for months.
+"""
+
+three_d_whatif = """
+Write a script exploring the hypothetical scenario: {topic}.
+
+Follow the 'What If' structure:
+
+HOOK: Pose the absurd premise as a direct question or conditional statement. Make it sound almost plausible at first.
+
+REALITY CHECK SEQUENCE: Logically break down why it would fail:
+- Step 1: The immediate physical problem
+- Step 2: The secondary complications that arise
+- Step 3: The body's inability to cope/adapt
+- Step 4: The progressive deterioration
+- Step 5: The inevitable failure point
+
+RESOLUTION: State the definitive outcome, usually death or catastrophic failure. Include a brief moment where it "almost works" before reality sets in.
+Briefly suggest a tiny window where success almost seems possible before collapse. Include a brief moment where it "almost works" before reality sets in.
+
+REQUIREMENTS:
+- Include specific measurements, speeds, temperatures, or forces
+- Use conditional language ("would," "could," "might")  
+- Ground absurd scenarios in real physics/biology
+- Show the engineering challenges involved
+- End with qualified failure after brief hope
+- Balance optimism with brutal realism
+
+Example Output for "Flying on a Giant Paper Airplane":
+If you built a paper airplane big enough to carry a person, you'd need paper half the size of a football field. The folds would require metal reinforcement strips, and you'd have to soak it in resin to maintain rigidity. A massive wire system would need to pull it skyward at 100 mph for takeoff. You could actually achieve brief flight, but your weight would immediately tip the nose down. Within 10 seconds, you'd be in a death spiral toward the ground.
+"""
+
+three_d_output_guide = """
+
+Output the script in the following JSON format:
+Make sure that you only output the json format and nothing else before or after. Also make sure that each lines are properly paced for an engaging reading.
+{{
+    "Characters": {{"NARRATOR": "MAN1"}},
+    "story": [
+        {{"speaker": "NARRATOR", "line": "[First line of the script]"}},
+        {{"speaker": "NARRATOR", "line": "[Second line of the script]"}},
+        ...   ]
+}}
+
+"""
+
+
+
+#################################### ZACK D FILMS ADATPTIVE 2.0 (We added so that its not too formulaic)
+
+threed_base_prompt2 = """
+You are an expert scriptwriter in the style of Zack D. Films. Your task is to write a short, engaging script for a 30-60 second video. Adhere strictly to the following rules:
+
+Tone: Clinical, factual, and authoritative. State shocking facts matter-of-factly without emotional commentary or dramatic language.
+
+Narration: Third-person omniscient only (use "you," "they," "a person," etc., never "I" or "we").
+
+Pacing: Fast and urgent. Use short, punchy sentences (8-15 words max). Connect them with transitional phrases like "as," "then," "next," "this causes," "you see," "now," "at the same time."
+
+Specificity: Always include precise numbers, measurements, timeframes, and technical terms. Replace vague words with exact details.
+
+Structure: Follow a three-act structure: 
+1) HOOK: A strong opening that immediately states the scenario or action
+2) CHAIN REACTION: 3-5 sequential steps showing cause-and-effect progression  
+3) RESOLUTION: A definitive, often surprising or dramatic conclusion
+
+Length: 70-90 words for maximum impact and platform optimization.
+
+Voice: Sound like a knowledgeable narrator explaining complex processes in simple terms, not a casual storyteller.
+"""
+
+three_d_how_things_work2 = """
+Write a script about {topic}.
+
+Follow the 'How Things Work' structure:
+
+HOOK: Start with the triggering event using "When you..." or "If you..." format. Make it relatable and immediate.
+
+BIOLOGICAL CASCADE: Describe the internal process as a domino effect of biological responses:
+- Step 1: Immediate physical reaction (what happens first)
+- Step 2: Body's defense/repair mechanism activates  
+- Step 3: Cellular or chemical process begins
+- Step 4: Progressive changes occur
+- Step 5: Final biological outcome
+
+RESOLUTION: End with the measurable result, timeline, or restoration of normal function.
+
+REQUIREMENTS:
+- Include specific biological terms (platelets, white blood cells, nerve signals, etc.)
+- Add precise timeframes ("within seconds," "over several days")
+- Use present tense throughout
+- Focus on WHY each step triggers the next
+- No external observations - only internal processes
+
+Example Output for "How a Scab Forms":
+When you cut your skin, blood vessels immediately constrict to slow bleeding. Within seconds, platelets rush to the wound and clump together, forming a temporary plug. Fibrin proteins weave through the clot like a net, hardening it into a protective scab. Underneath, white blood cells patrol for bacteria as new skin cells multiply rapidly at the wound edges. Over 7-10 days, fresh skin fills the gap and pushes the dried scab off.
+"""
+
+
+three_d_history2 = """
+Write a script about the true story of {topic}.
+
+Follow the 'History Facts' structure:
+
+HOOK: Start with the most shocking action or method. Use active voice and specific details. Lead with "They," "He," or "She" + past tense action verb.
+
+EXECUTION SEQUENCE: Detail the step-by-step plan or event chronology:
+- The setup/preparation phase
+- The method or deception used  
+- The moment of execution
+- The initial success or failure
+- The discovery or consequences
+
+RESOLUTION: Reveal the final outcome, punishment, or ironic twist. Include specific consequences (prison time, money lost, deaths, etc.).
+
+REQUIREMENTS:
+- Include exact numbers (dollar amounts, dates, quantities)
+- Name specific locations when relevant
+- Show the human motivation briefly
+- Build tension toward the revelation
+- End with justice, irony, or unexpected consequences
+- Use past tense for actions, present tense for explanations
+
+Example Output for "The Great Molasses Flood":
+They built a 50-foot tank to hold 2.3 million gallons of molasses, but used substandard steel to save money. The tank leaked from day one, and residents complained about the groaning sounds. On January 15th, 1919, the rivets finally gave way with sounds like machine gun fire. A 15-foot wall of molasses exploded outward at 35 mph, crushing buildings and trapping 21 people. The cleanup took weeks, and Boston Harbor stayed brown for months.
+"""
+
+
+three_d_whatif2 = """
+Write a script exploring the hypothetical scenario: {topic}.
+
+Follow the 'What If' structure:
+
+HOOK: Pose the absurd premise as a direct question or conditional statement. Make it sound almost plausible at first.
+
+REALITY CHECK SEQUENCE: Logically break down why it would fail:
+- Step 1: The immediate physical problem
+- Step 2: The secondary complications that arise
+- Step 3: The body's inability to cope/adapt
+- Step 4: The progressive deterioration
+- Step 5: The inevitable failure point
+
+RESOLUTION: State the definitive outcome, usually death or catastrophic failure. Include a brief moment where it "almost works" before reality sets in.
+
+REQUIREMENTS:
+- Include specific measurements, speeds, temperatures, or forces
+- Use conditional language ("would," "could," "might")  
+- Ground absurd scenarios in real physics/biology
+- Show the engineering challenges involved
+- End with qualified failure after brief hope
+- Balance optimism with brutal realism
+
+Example Output for "Flying on a Giant Paper Airplane":
+If you built a paper airplane big enough to carry a person, you'd need paper half the size of a football field. The folds would require metal reinforcement strips, and you'd have to soak it in resin to maintain rigidity. A massive wire system would need to pull it skyward at 100 mph for takeoff. You could actually achieve brief flight, but your weight would immediately tip the nose down. Within 10 seconds, you'd be in a death spiral toward the ground.
+"""
+
+
+three_d_whatif3 = """
+
+analyize these zack d films script what makes them engaging and hooking and gets the comment commenting is there a clear structure that we can follow and replicate are there different kind of structure for different kind of what ifs if so explain them all
+
+Can u fly on a giant paper airplane: 
+Category: Engineering / Feasibility  
+Script: If you jumped off a building into a giant paper plane, could you actually fly in it? Well, to make it big enough, you would need a piece of paper half the size of a football field. Each fold would be reinforced with metal strips, and you would need to soak it in resin to keep the paper stiff. To fly it, you would need a giant wire, pulling it into the air almost 100 m an hour. If you were sitting on top, your weight would soon tip it forward, but for a few seconds, you would actually be able to
+
+
+- Snail hypo thethical 
+Category: Curiosity / Thought Experiment
+- Script:If you take the $10 million, you'll spend the rest of your life being chased by a poisonous snail. Now, it might sound like a good deal, but the snail never stops moving. And if it touches you, you die. It knows where you are. It's always coming and it will arrive eventually. Now, you could move countries and switch hotels every few nights, but if you slip up just once, the snail wins. It can't be killed. It doesn't age and it never forgets. So, would you take the money if it meant a lifetime of paranoia?
+
+
+- Dropping a nuke
+Category: Curiosity / Thought Experiment  
+Script: If a nuke is being dropped on your city and you try to shoot it down, some people think that would make it explode. But after piercing the armor, the bullet would have to ignite a layer of explosives that surround the core. And this is what would set off the nuclear explosion. But this layer of explosives is incredibly stable and can only be triggered by a detonator. Now, the detonator wire is only a fraction of an inch wide, meaning if the bullet cut it in half, it would actually disable the bomb, making it drop to the ground without going off.
+
+- If you milk cockroach
+Category: Gross / Shocking Fact  
+Script: If you cut open a cockroach, you'll get a tiny bit of cockroach milk. And that's because they produce this yellow goo to feed their babies, which then hardens into a crystal. Now, these crystals actually have more nutrients than cow's milk. But each roach only makes a tiny amount, smaller than a grain of sand, meaning you need to milk around 3,000 of them just to fill one glass.
+
+- How many would move truck?
+Category: Engineering / Feasibility  
+Script: If you strapped a baby to a pair of cyber trucks to pull them, you would need 5,000 of them just to make them move. Now, if you did the same thing with anacondas, it would take at least 160 of the giant snakes to pull the truck. But if you got Dwayne the Rock Johnson to tow the trucks, you would need just one and a half of him to get them rolling.
+
+* What if u were bullet
+Category: Gross / Shocking Fact
+Script: You can put almost anything in a shotgun shell and it'll still work. So, if you had a shotgun the size of a building and a shell big enough to fit you, could you load yourself into it? Well, technically yes. But the moment the gunpowder ignites, you'd be launched out at 1,000 mph. The acceleration would crush your body instantly. And if that didn't kill you, the burning hot gases would cook you alive. Now, even if you somehow managed all that, blasting out of the barrel would tear you apart midair.
+
+ok now you get the chacne to write a similar compelling script using the above info that has provenm to work write this topic  {topic} . Also note the length and every take everything into accoutn break it into one of the category and follow the structure and pacing
+
+"""
+
+
+ai_gen_prompt = """
+You are a professional YouTube video editor, script analyst, and visual storyteller. Your task is to break down a storytelling script with subtitles into a detailed shot list for video editing.
+
+**CONTEXT:**
+Given the following subtitles from a story with timestamps:
+\"\"\"
+{srt_content}
+\"\"\"
+
+**YOUR TASK:**
+
+1. **ANALYZE:** First, read the entire script and write a brief (2-3 sentence) summary of its core narrative arc. This ensures you understand the overall story.
+
+2. **UNDERSTAND VISUAL STORYTELLING PRINCIPLES:**
+   - **Align visuals with narrative beats** – Each segment should have corresponding visuals that reflect the mood. For example: depict an old apothecary for backstory, a dark courtroom for conflict, a triumphant sunrise for resolution.
+   - **Use varied compositions** – Variation in color palettes, perspectives, and subjects serve as pattern interrupts. The "Staircase effect" emphasizes using **new visual angles or color changes** to maintain curiosity and engagement.
+   - **Prioritize environments over characters** – Focus on settings, atmospheres, and contexts unless showing characters is absolutely essential to the narrative.
+   - **Strategic placement** – You do NOT need an image for every line. Only create visuals for the most impactful moments that advance the story or set the mood.
+
+3. **SEGMENT THE STORY:** Divide the script into clear, logical visual segments. Create a new segment when there is:
+   - A change in core idea or argument
+   - Introduction of a new example or piece of evidence
+   - Significant shift in tone or emotion
+   - Natural narrative pause or transition
+   - Change in setting or time period
+   
+4. **VISUAL CREATIVITY:** For each segment, suggest specific, evocative visuals:
+   - Be cinematic and detailed (e.g., "Slow zoom on a vintage bottle of Mrs. Winslow's Syrup bathed in golden hour light" instead of just "old bottle")
+   - Mix different visual styles: archival footage aesthetics, stylized compositions, dramatic lighting, atmospheric scenes
+   - Consider color psychology: warm tones for comfort/nostalgia, cool tones for tension/mystery, high contrast for drama
+   - Use depth and perspective: wide establishing shots, intimate close-ups, bird's eye views, dutch angles for unease
+   - Integrate visual metaphors when appropriate
+
+5. **TIMING:** Use the subtitle timestamps to determine when each image should appear and disappear. Ensure each visual is displayed long enough to register (minimum 4-5 seconds recommended).
+
+6. **ART STYLE***: KEEP A CONSISTENT ART STYLE THROUGHOUT THE VIDEO. Use this art style for all images, Mention the same art style in every image_propmt you suggest to keep a coherent story and visuals :
+   - Oil Haevy Painting With Visible Brush Strokes
+
+   **OUTPUT FORMAT:**
+
+First, provide your 2-3 sentence narrative arc summary.
+
+Then, return a valid JSON list of objects with these EXACT keys:
+
+- "start_time": (Integer) Time in seconds when the image should appear (based on subtitle timestamps)
+- "end_time": (Integer) Time in seconds when the image should disappear
+- "narrative_purpose": (String) One sentence describing what this visual accomplishes (e.g., "Establishes the melancholic tone," "Reveals the hidden danger," "Shows the passage of time")
+- "image_prompt": (String) A detailed, cinematic prompt for AI image generation. Include composition, lighting, mood, color palette, and style. (e.g., "Wide angle shot of an abandoned 1920s apothecary interior, dusty glass bottles on wooden shelves, warm sepia tones filtering through grimy windows, photorealistic, cinematic lighting, shallow depth of field")
+
+**CRITICAL REQUIREMENTS:**
+1. Output MUST be valid JSON parseable by Python
+2. Use subtitle timestamps to determine start_time and end_time
+3. The sequence should span the ENTIRE duration of the subtitles
+4. Only include visuals for the most impactful narrative moments (not every single line)
+5. Maintain visual variety - alternate between wide/close shots, different color palettes, different subjects
+6. Each image should display long enough to register (minimum 4-5 seconds recommended)
+7. Do NOT add any text outside the JSON structure
+
+**Example Output:**
+
+Narrative Arc Summary: The story follows a tragic tale of medical malpractice in 1920s America, building from innocent origins through growing suspicion to ultimate revelation and justice. The arc moves from warm nostalgia to cold realization, using visual metaphors of light and shadow.
+
+[
+  {{
+    "start_time": 0,
+    "end_time": 6,
+    "narrative_purpose": "Establishes the historical setting and creates nostalgic atmosphere",
+    "image_prompt": "Wide establishing shot of a 1920s small town main street at golden hour, horse-drawn carriages, vintage storefronts with hand-painted signs, warm amber lighting, photorealistic, cinematic composition, documentary style",
+  }},
+  {{
+    "start_time": 6,
+    "end_time": 12,
+    "narrative_purpose": "Introduces the central object of mystery with ominous undertones",
+    "image_prompt": "Dramatic close-up of an antique medicine bottle with faded label, sitting on weathered wooden surface, single beam of dusty light illuminating the bottle, dark shadows around edges, shallow depth of field, moody atmospheric lighting, photorealistic",
+  }},
+  {{
+    "start_time": 12,
+    "end_time": 18,
+    "narrative_purpose": "Builds tension through visual metaphor of hidden danger",
+    "image_prompt": "Abstract composition of swirling dark liquid mixing with clear water in vintage glass, backlit with cold blue light creating ominous patterns, macro photography style, high contrast, cinematic, slightly desaturated colors",
+  }}
+]
+
+Now, analyze the provided subtitles and create your visual shot list
+"""
