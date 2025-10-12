@@ -9,7 +9,9 @@ output/
 save/
 *.txt
 *srt
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+*.png
+/.venv
+
 
 # dependencies
 /node_modules
@@ -27,6 +29,7 @@ save/
 # next.js
 /.next/
 /out/
+/node_modules/
 
 # production
 /build
@@ -41,7 +44,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
 
 # vercel

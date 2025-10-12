@@ -1,38 +1,65 @@
-import requests
 import os
-from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, AudioClip, concatenate_audioclips,CompositeVideoClip, ImageSequenceClip,concatenate_videoclips,vfx,VideoClip
+import json
+import ast
+import math
+import random
+import csv
+import re
+import time
+import subprocess
+import shlex
+from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
+import boto3
+import uuid
+
 import dotenv
+import requests
+import numpy as np
+from PIL import Image
+from moviepy import (
+    VideoFileClip,
+    AudioFileClip,
+    CompositeAudioClip,
+    AudioClip,
+    concatenate_audioclips,
+    CompositeVideoClip,
+    ImageSequenceClip,
+    concatenate_videoclips,
+    vfx,
+    VideoClip,
+)
+from moviepy.video.VideoClip import ImageClip
+from moviepy.video.fx import Resize
+from moviepy.video.fx.Loop import Loop
+
+import inquirer
+from inquirer.themes import GreenPassion
+
+from googleapiclient.discovery import build
 from elevenlabs.client import ElevenLabs
 from elevenlabs import play
 from openai import OpenAI
-import json
-import numpy as np
-import ast
-from PIL import Image
-import subprocess
-import shlex
-from moviepy.video.VideoClip import ImageClip
-from moviepy.video.fx import Resize
-import math
-from moviepy.video.fx.Loop import Loop
-dotenv.load_dotenv()
-import prompts
-import random
-import csv
-from datetime import datetime
-from googleapiclient.discovery import build
-import inquirer
-from inquirer.themes import GreenPassion
+
 from langchain.agents import Tool, initialize_agent, AgentType
 from langchain_community.utilities import SerpAPIWrapper
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain
-import re
-import time
 from langchain_tavily import TavilySearch
 
+# Local project modules
+import backend.prompts as prompts
+from backend.pipelines.models import *
+
+# Load environment variables safely
+backend_dir = Path(__file__).parent
+env_file = backend_dir / '.env'
+
+# Load environment variables from the backend/.env file
+load_dotenv(env_file)
 """
 NOTES
 
@@ -74,6 +101,20 @@ CHANNEL_ID = os.getenv("YT_CHANNEL_ID")
 os.environ["OPENAI_API_KEY"] = os.getenv("OPEN_ROUTER_API_KEY")
 os.environ["SERPAPI_API_KEY"] = os.getenv("SERPAPI_API_KEY")
 os.environ["TAVILY_API_KEY"] = os.getenv("TAVILY_API_KEY")
+
+
+AWS_KEY    = os.getenv("AWS_ACCESS_KEY")
+AWS_SECRET = os.getenv("AWS_SECRET_KEY")
+AWS_REGION = os.getenv("AWS_REGION")
+BUCKET     = os.getenv("AWS_BUCKET_NAME")
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=AWS_KEY,
+    aws_secret_access_key=AWS_SECRET,
+    region_name=AWS_REGION
+)
+
 
 def extract_from_observation(self, agent_output):
     """Extract JSON from the tool's Observation line"""
@@ -574,7 +615,7 @@ VOICE_IDS = {
 
 # ---------------- CLASSES ----------------
 import itertools
-from prompts import business_psych_ideas3
+from backend.prompts import business_psych_ideas3
 class IdeaGeneratorBiz(Agent):
     def __init__(self, prompt):
         super().__init__()
@@ -927,6 +968,199 @@ class IdeaGenerator(Agent):
         print("="*60)
         
         return self.selections
+    
+
+    def randomize_selection(self):
+        self.selections = {
+            'format': random.choice(self.story_experiments["formats"]),
+            'style': random.choice(self.story_experiments["styles"]),
+            'length': random.choice(self.story_experiments["lengths"]),
+            'category': random.choice(self.story_experiments["story_categories"]),
+            'narrator': random.choice(self.story_experiments["narrator_demographics"]),
+            'emotional_tone': random.choice(self.story_experiments["emotional_tones"]),
+            'viral_element': random.choice(self.story_experiments["viral_elements"]),
+        }
+        return self.selections
+
+
+class PromptDrivenIdeaGenerator(Agent):
+    def __init__(self):
+        self.story_experiments = {
+            "formats": [
+                {"name": "Single Long Story","description": "One full story, emotional arc from start to finish","example_hook": "The night I discovered my family's darkest secret"},
+                {"name": "Multiple Short Stories","description": "2–5 mini stories in one video, each 3–5 min","example_hook": "Three times strangers changed my life forever"},
+                {"name": "Series / Parted Story","description": "One story split across multiple episodes","example_hook": "Part 1: My creepy roommate"},
+                {"name": "Thematic Compilation","description": "Stories around a theme (betrayal, horror, regret)","example_hook": "Top 5 chilling campfire confessions"},
+                {"name": "Interactive / POV","description": "Story told as if viewer is the character","example_hook": "You wake up in a cabin, and it's not empty…"},
+                {"name": "What If / Hypothetical","description": "Short fictional 'what would you do?' scenarios","example_hook": "What would you do if your best friend disappeared overnight?"}
+            ],
+            "styles": [
+                {"name": "Dramatic / Emotional", "use_when": "drama betrayal"},
+                {"name": "Cozy / Campfire", "use_when": "fantasy light horror feel-good"},
+                {"name": "Creepy / Horror", "use_when": "horror suspense campfire urban"},
+                {"name": "Funny / Relatable", "use_when": "slice-of-life awkward social"},
+                {"name": "Twist / Shock Ending", "use_when": "twist surprise"},
+                {"name": "Inspirational / Uplifting", "use_when": "overcoming struggle life lessons"}
+            ],
+            "lengths": [
+                {"duration": "5–10 min", "pros": "Fast consumption; high retention", "cons": "Hard to develop emotional arc"},
+                {"duration": "15–25 min", "pros": "Solid storytelling; room for multiple arcs", "cons": "Requires good editing & pacing"},
+                {"duration": "25–45 min", "pros": "Deep immersion; loyal viewers", "cons": "Needs strong hook upfront"},
+                {"duration": "50+ min", "pros": "Marathon content; binge potential", "cons": "Hard to retain casual viewers"}
+            ],
+            "story_categories": [
+                {"name": "Home Invasion/Stalking","appeal": "Universal fear, personal safety","age_range": "16-35","settings": ["apartments","family homes","dorms"]},
+                {"name": "Workplace Horror","appeal": "Adult relatability, professional vulnerability","age_range": "22-45","settings": ["offices","retail","restaurants","night shifts"]},
+                {"name": "Dating Nightmares","appeal": "Romance vulnerability, trust betrayal","age_range": "18-35","settings": ["online dating","blind dates","college parties"]},
+                {"name": "Childhood Trauma","appeal": "Protective instincts, innocence lost","age_range": "8-17","settings": ["school","neighborhood","family events"]},
+                {"name": "Travel/Vacation Horror","appeal": "Isolation, unfamiliar territory","age_range": "18-40","settings": ["hotels","airbnb","camping","road trips"]},
+                {"name": "Neighbor Situations","appeal": "Ongoing proximity, can't escape","age_range": "25-50","settings": ["suburban homes","apartments","rural properties"]}
+            ],
+            "narrator_demographics": [
+                {"age_group": "Teen (14-17)","voice": "WOMAN1 or MAN1","situations": ["school","family home","part-time jobs"],"vulnerability": "inexperience, dependence on adults"},
+                {"age_group": "Young Adult (18-25)","voice": "WOMAN1 or MAN1","situations": ["college","first apartments","early career"],"vulnerability": "independence, financial constraints"},
+                {"age_group": "Adult (26-35)","voice": "WOMAN2 or MAN2","situations": ["established career","homeowner","parent"],"vulnerability": "responsibility for others, established routines"},
+                {"age_group": "Older Adult (36-50)","voice": "WOMAN2 or MAN2","situations": ["long-term resident","experienced professional"],"vulnerability": "overconfidence, routine predictability"}
+            ],
+            "emotional_tones": [
+                {"name": "Authentic Fear","description": "Genuine terror, realistic reactions","best_for": "home invasion stalking workplace threats"},
+                {"name": "Creeping Dread","description": "Slow-building unease, something's not right","best_for": "neighbor situations workplace dynamics"},
+                {"name": "Betrayal Shock","description": "Trusted person reveals dark side","best_for": "dating workplace family"},
+                {"name": "Violation/Invasion","description": "Personal space/privacy compromised","best_for": "home invasion stalking travel"}
+            ],
+            "viral_elements": [
+                "Specific memorable detail (figurine, wave, text message)",
+                "Universal relatable fear",
+                "Authentic dialogue/internal thoughts",
+                "Unresolved mystery element",
+                "Location/time specificity",
+                "Realistic police/authority response"
+            ],
+            "optimal_specs": {
+                "hook_timing": "First 15 seconds",
+                "tension_beats": "3-4 escalating moments",
+                "resolution": "Clear but leaves questions for engagement"
+            }
+        }
+
+    def _match_by_keywords(self, prompt, items, key):
+        prompt_lower = prompt.lower()
+        for item in items:
+            if any(word in prompt_lower for word in item[key].lower().split()):
+                return item
+        return random.choice(items)
+
+    def generate_story_config(self, prompt: str):
+        return {
+            "format": random.choice(self.story_experiments["formats"]),
+            "style": self._match_by_keywords(prompt, self.story_experiments["styles"], "use_when"),
+            "length": random.choice(self.story_experiments["lengths"]),
+            "category": self._match_by_keywords(prompt, self.story_experiments["story_categories"], "name"),
+            "narrator": random.choice(self.story_experiments["narrator_demographics"]),
+            "emotional_tone": self._match_by_keywords(prompt, self.story_experiments["emotional_tones"], "best_for"),
+            "viral_element": random.choice(self.story_experiments["viral_elements"])
+        }
+
+    def generate_prompt_from_config(self, prompt: str, selections: dict):
+        return (
+            f"User prompt: {prompt}\n\n"
+            f"FORMAT: {selections['format']['name']} ({selections['format']['description']})\n"
+            f"STYLE: {selections['style']['name']} (Use when: {selections['style']['use_when']})\n"
+            f"LENGTH: {selections['length']['duration']}\n"
+            f"CATEGORY: {selections['category']['name']} ({selections['category']['appeal']})\n"
+            f"NARRATOR: {selections['narrator']['age_group']} (Voice: {selections['narrator']['voice']})\n"
+            f"EMOTIONAL TONE: {selections['emotional_tone']['name']} ({selections['emotional_tone']['description']})\n"
+            f"VIRAL ELEMENT: {selections['viral_element']}\n\n"
+            f"Create a compelling YouTube story idea with title, description, and key points. "
+            f"Follow all specifications above."
+        )
+
+# Same as ideagenerator but let the llm choose the params in story experiment
+class IdeaGeneratorLLM(Agent):
+    """
+    AI-driven story idea generator.
+    User provides a prompt, and the LLM determines story parameters.
+    Optional overrides can be provided to fix certain values.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+        # Only the names; descriptions/examples omitted for simplicity
+        self.story_experiments = {
+            "formats": ["Single Long Story", "Multiple Short Stories", "Series / Parted Story",
+                        "Thematic Compilation", "Interactive / POV", "What If / Hypothetical"],
+            "styles": ["Dramatic / Emotional", "Cozy / Campfire", "Creepy / Horror", 
+                       "Funny / Relatable", "Twist / Shock Ending", "Inspirational / Uplifting"],
+            "lengths": ["5–10 min", "15–25 min", "25–45 min", "50+ min"],
+            "story_categories": ["Home Invasion/Stalking", "Workplace Horror", "Dating Nightmares",
+                                 "Childhood Trauma", "Travel/Vacation Horror", "Neighbor Situations"],
+            "emotional_tones": ["Authentic Fear", "Creeping Dread", "Betrayal Shock", "Violation/Invasion"],
+            "narrator_demographics": ["Teen (14-17)", "Young Adult (18-25)", "Adult (26-35)", "Older Adult (36-50)"],
+            "viral_elements": ["Specific memorable detail", "Universal relatable fear", "Authentic dialogue",
+                               "Unresolved mystery", "Location/time specificity", "Realistic police/authority response"]
+        }
+
+    def generate_prompt_for_llm(self, user_prompt: str, overrides: dict = None) -> str:
+        """
+        Creates a structured prompt to ask the LLM.
+        LLM should return JSON in the exact format we want.
+        """
+        base_instruction = f"""
+        Generate a YouTube story idea based on this prompt:
+        PROMPT: {user_prompt}
+
+        Choose these story parameters so that it best fits the prompt for an engaging YouTube story:
+        Return JSON with the following keys:
+        - format: choose a suitable story format from {self.story_experiments['formats']}
+        - style: suitable style from {self.story_experiments['styles']}
+        - length: video length from {self.story_experiments['lengths']}
+        - category: story category from {self.story_experiments['story_categories']}
+        - narrator: narrator demographics from {self.story_experiments['narrator_demographics']} 
+        - emotional_tone: emotional tone from {self.story_experiments['emotional_tones']}
+        - viral_element: one element from {self.story_experiments['viral_elements']}
+        - title: compelling clickable story title
+        - description: concise description of story idea
+
+        Only return valid JSON with these keys. Do not include extra text.
+        Example of expected JSON output (use double curly braces to show example, DO NOT interpolate in the actual output):
+        {{
+            "format": "Single Long Story",
+            "style": "Creepy / Horror",
+            "length": "15–25 min",
+            "category": "Home Invasion/Stalking",
+            "narrator": "Young Adult (18-25)",
+            "emotional_tone": "Authentic Fear",
+            "viral_element": "Specific memorable detail",
+            "title": "The Night They Broke In",
+            "description": "A suspenseful story of a young adult alone at home, discovering intruders, highlighting authentic fear and tension."
+        }}
+
+        """
+        if overrides:
+            base_instruction += f"\nApply these overrides: {overrides}"
+        return base_instruction
+
+    def generate_story_idea(self, user_prompt: str, overrides: dict = None) -> dict:
+        """
+        Main function: asks LLM for story idea based on user prompt.
+        Returns a Python dict directly from JSON.
+        """
+        prompt = self.generate_prompt_for_llm(user_prompt, overrides)
+
+        response_dict = self.ask_llm_no_search(prompt)
+        return response_dict
+
+    def display_summary(self, story_dict: dict):
+        """
+        Print a clean summary of the generated story.
+        """
+        print("\n" + "="*60)
+        print("📋  GENERATED STORY IDEA".center(60))
+        print("="*60)
+        for key, value in story_dict.items():
+            print(f"{key.upper()}: {value}")
+        print("="*60)
 
 
 class CounterintuitiveWriter(Agent):
@@ -1149,7 +1383,7 @@ class ExplainerWriter(Agent):
                 "revelation" : ["topic_title","full_script","core_revelation"],
                 "montage" : ["topic_title","core_revelation","key_examples","full_script"],
                 "impact": ["key_examples", "psychological_principles","full_script"],
-                "business": ["full_script","topic_title","psychological_principles"],
+                "business": ["full_script","topic_titl e","psychological_principles"],
                 "payoff": ["topic_title","core_revelation","full_script"]
             }
             return section_variables.get(section, [])
@@ -1264,6 +1498,66 @@ class ExplainerWriter(Agent):
     
     def add_line(self, speaker, line):
         self.script_lines.append((speaker, line))
+
+
+
+class ThreeDWriter(Agent):
+    """
+    Handles scripts: input, formatting, and speaker assignment.
+    """
+    def __init__(self):
+        super().__init__()
+
+        self.niches = ["relationship betrayal",
+            "workplace revenge",
+            "family secrets",
+            "social media gone wrong",
+            "mysterious neighbor",
+            "dating app horror story",
+            "roommate from hell"
+        ]
+
+        self.type = ""
+
+        """
+        raw_script: list of (SPEAKER, LINE)
+        """
+        #self.script_lines = raw_script
+        self.llm_model = "deepseek/deepseek-chat-v3.1:free"
+        self.full_script = ""
+
+    def get_lines(self):
+        return self.script_lines
+        
+    def get_prompt(self, topic,type_story="narration"):
+        if type_story == "how_things_work":
+            prompt = prompts.threed_base_prompt + prompts.three_d_how_things_work + prompts.three_d_output_guide
+        elif type_story == "history":
+            prompt = prompts.threed_base_prompt + prompts.three_d_history + prompts.three_d_output_guide
+        elif type_story == "whatif":
+            prompt = prompts.threed_base_prompt + prompts.three_d_whatif3 + prompts.three_d_output_guide
+
+            return prompt
+
+        
+        return prompt.format(topic=topic)
+
+    def generate_script(self, type,topic):
+        prompt = self.get_prompt(topic=topic, type_story=type)
+
+        print("GENERATING SCRIPT WITH THE PROMPT: \n\n\n\n\n", prompt, "\n\n\n\n\n")
+        response = self.ask_llm_no_search(prompt)
+        if response:
+            self.script_lines = response
+            return response
+        else:
+            print("Failed to generate script.")
+            return None
+            
+    def add_line(self, speaker, line):
+        self.script_lines.append((speaker, line))
+
+
 
 
 class Writer(Agent):
@@ -1976,6 +2270,11 @@ class Director(Agent):
         return srt_content
 
 
+    """
+    Fetch image from Pixabay API
+    
+
+    """
     def fetch_image(self, query):
         base_url = "https://pixabay.com/api/"
         params = {
@@ -2311,6 +2610,7 @@ class VideoDirector(Agent):
             print(f"Error creating final video: {e}")
             return None
 
+
 class Editor(Agent):
     """
     Handles TTS generation, merging audio, and final output.
@@ -2366,7 +2666,7 @@ class Editor(Agent):
         elif tts == "kokoro":
             # Kokoro only accept .wav filename
             output_path = output_path.replace(".mp3", ".wav")
-            url = "http://127.0.0.1:8000/generate-audio/"
+            url = "http://127.0.0.1:8080/generate-audio/"
             payload = {
                 "text": text,
                 "file_path": output_path,
@@ -2385,6 +2685,28 @@ class Editor(Agent):
         print(f"✅ Audio saved to {output_path}, duration: {duration:.2f}s")
         return duration
 
+    def script_to_dict(self, script_text: str):
+        """
+        Convert script text to a structured dictionary.
+        script_text: str in the format "SPEAKER: line"
+        returns: dict with keys "Characters" and "story"
+        """
+        lines = script_text.strip().split("\n")
+        story = []
+        characters = set()
+
+        for line in lines:
+            if ":" in line:
+                speaker, dialogue = line.split(":", 1)
+                speaker = speaker.strip()
+                dialogue = dialogue.strip()
+                story.append({"speaker": speaker, "line": dialogue})
+                characters.add(speaker)
+
+        return {
+            "Characters": {char: char for char in characters},
+            "story": story
+        }
 
     def analyze_script(self, script_text: dict, subtitle_output_path="subtitles.srt"):
         """
@@ -2739,6 +3061,52 @@ def add_id_to_csv(csv_file=CSV_FILE, channel_id=CHANNEL_ID, api_key=API_KEY):
     
     print(f"Appended video '{video_title}' with ID {video_id} to CSV.")
 
+# Upload file and get URLs
+def upload_audio_to_s3(audio_content, filename=None):
+    try:
+        # Generate unique filename if none provided
+        if not filename:
+            filename = f"audio/{uuid.uuid4()}.mp3"
+        
+        # Upload to S3
+        s3.put_object(
+            Bucket=BUCKET,
+            Key=filename,
+            Body=audio_content,
+            ContentType='audio/mpeg',
+            CacheControl='max-age=3600'
+        )
+        
+        # Generate presigned URL (temporary, secure)
+        audio_url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': BUCKET, 'Key': filename},
+            ExpiresIn=3600  # 1 hour expiration
+        )
+        
+        # Generate download URL
+        download_url = s3.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': BUCKET, 
+                'Key': filename,
+                'ResponseContentDisposition': 'attachment; filename="story.mp3"'
+            },
+            ExpiresIn=3600
+        )
+        
+        return {
+            'success': True,
+            'audioUrl': audio_url,
+            'downloadUrl': download_url,
+            'filename': filename
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
 
 
 
@@ -2749,6 +3117,7 @@ if __name__ == "__main__":
     if (choice.strip().lower() == "c"):
         add_id_to_csv()
 
+    
     generator = IdeaGenerator()
     #generator.run()
     res_gen = generator.generate_prompt_from_selections()
@@ -2905,3 +3274,106 @@ if __name__ == "__main__":
 
     #editor.merge_visuals_video(image_seq_file, merged_audio, final_output="final_video.mp4", zoom=False)
     #burn_subtitles()
+
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app = FastAPI()
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+@app.post("/api/generate-story")
+async def generate_story(request: StoryRequest):
+
+    prompt = request.prompt
+    story_type = request.storyType
+
+    if story_type == "biz":
+        pass
+
+    elif story_type == "threed":
+        #generator = IdeaGenerator3D()
+        #prompt_for_llm = generator.generate_prompt_for_llm(prompt)
+
+        
+        #genre_idea = generator.ask_llm_no_search(prompt)
+
+        #print("Generated Idea: ", genre_idea)
+
+        writer = ThreeDWriter()
+        generated_story = writer.generate_script(topic=prompt)
+        
+    else:
+        generator = IdeaGeneratorLLM()
+        prompt_for_llm = generator.generate_prompt_for_llm(prompt)
+
+        
+        genre_idea = generator.ask_llm_no_search(prompt_for_llm)
+
+        print("Generated Idea: ", genre_idea)
+
+        writer = Writer()
+        prompt_for_writer = writer.get_prompt(genre_idea,"narration")
+        generated_story = writer.ask_llm_no_search(prompt_for_writer)
+        
+    
+
+    # Return as JSON
+    return generated_story
+
+
+@app.post("/api/generate-audio")
+async def generate_audio(request: AudioRequest):
+
+    script = request.story
+
+    editor = Editor(VOICE_IDS)
+    
+    new_topic_name = f"Generated_Audio_Topic_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    new_topic_folder = os.path.join(os.getcwd(), "backend")
+    new_topic_folder = os.path.join(new_topic_folder, new_topic_name)
+
+    # Create the folder if it doesn't exist
+    os.makedirs(new_topic_folder, exist_ok=True)
+
+    # Full path for the subtitle file inside the new topic folder
+    subtitle_output_path = os.path.join(new_topic_folder, "subtitles.srt")
+
+    # Pass this path to your analyze_script function
+    script_lines = editor.analyze_script(script, subtitle_output_path=subtitle_output_path)
+#
+    audio_files = editor.generate_audio(script_lines, output_dir="output",srt_file=subtitle_output_path)
+
+    audio_file_name = "generated_audio"+".mp3"
+    audio_file_name = audio_file_name.replace(" ","_")
+    save_file_path = os.path.join(new_topic_folder, audio_file_name)
+
+    merged_audio = editor.merge_audio(audio_files, final_output=save_file_path)
+
+
+    # Upload to S3 and get URLs
+    with open(merged_audio, "rb") as f:
+        audio_content = f.read()
+    
+    upload_result = upload_audio_to_s3(audio_content)
+
+    """
+    Upload result structure:
+    {
+        'success': True,
+        'audioUrl': 'https://...',
+        'downloadUrl': 'https://...',
+        'filename': filename
+    }
+    """
+    return upload_result
+
+
+# python -m uvicorn backend.main:app --reload  (run at root)
