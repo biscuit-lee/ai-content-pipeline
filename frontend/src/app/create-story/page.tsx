@@ -13,19 +13,21 @@ export default function Dashboard() {
   const [generatedStory, setGeneratedStory] = useState('')
   const [editedStory, setEditedStory] = useState('')
   const [audioUrl, setAudioUrl] = useState('')
+  const [videoUrl, setVideoUrl] = useState('')
   const [tmpJson, setTmpJson] = useState(null) 
   // Loading states
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false)
   const [tts_provider, setTtsProvider] = useState('elevenlabs')
   // Current step in the process
-  const [currentStep, setCurrentStep] = useState('input') // 'input', 'story', 'audio'
+  const [currentStep, setCurrentStep] = useState('input') // 'input', 'story', 'audio', 'video'
 
   // Story type options
   const storyTypes = [
     { value: 'reddit', label: '🗺️ Reddit' },
     { value: 'biz', label: '⚡ Business psychology explainer' },
-    { value: 'children', label: '🧸 Children\'s Story' }
+    { value: 'podcast', label: '🎙️ Podcast (Multiple Voices)' }
   ]
 
   const tts_providers = [
@@ -127,18 +129,57 @@ export default function Dashboard() {
     }
   }
 
+  const handleGenerateVideo = async () => {
+    if (!audioUrl) return
+    
+    setIsGeneratingVideo(true)
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/generate-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          story: tmpJson,
+          audioUrl: audioUrl,
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Video generation response:', data)
+        setVideoUrl(data.videoUrl)
+        setCurrentStep('video')
+      } else {
+        alert('Failed to generate video. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error generating video:', error)
+      alert('An error occurred. Please try again.')
+    } finally {
+      setIsGeneratingVideo(false)
+    }
+  }
+
   const handleStartNew = () => {
     setPrompt('')
     setStoryType('reddit')
     setGeneratedStory('')
     setEditedStory('')
     setAudioUrl('')
+    setVideoUrl('')
     setCurrentStep('input')
   }
 
   const handleBackToEdit = () => {
     setCurrentStep('story')
     setAudioUrl('')
+    setVideoUrl('')
+  }
+
+  const handleBackToAudio = () => {
+    setCurrentStep('audio')
+    setVideoUrl('')
   }
 
   return (
@@ -183,26 +224,33 @@ export default function Dashboard() {
       <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
         {/* Progress Steps */}
         <div className="mb-8">
-          <div className="flex items-center justify-center space-x-8">
-            <div className={`flex items-center ${currentStep === 'input' ? 'text-purple-600' : currentStep === 'story' || currentStep === 'audio' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'input' ? 'bg-purple-600 text-white' : currentStep === 'story' || currentStep === 'audio' ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+          <div className="flex items-center justify-center space-x-4">
+            <div className={`flex items-center ${currentStep === 'input' ? 'text-purple-600' : ['story', 'audio', 'video'].includes(currentStep) ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'input' ? 'bg-purple-600 text-white' : ['story', 'audio', 'video'].includes(currentStep) ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
                 1
               </div>
-              <span className="ml-2 font-medium">Create Prompt</span>
+              <span className="ml-2 font-medium text-sm">Prompt</span>
             </div>
-            <div className={`w-16 h-0.5 ${currentStep === 'story' || currentStep === 'audio' ? 'bg-green-600' : 'bg-gray-300'}`}></div>
-            <div className={`flex items-center ${currentStep === 'story' ? 'text-purple-600' : currentStep === 'audio' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'story' ? 'bg-purple-600 text-white' : currentStep === 'audio' ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+            <div className={`w-12 h-0.5 ${['story', 'audio', 'video'].includes(currentStep) ? 'bg-green-600' : 'bg-gray-300'}`}></div>
+            <div className={`flex items-center ${currentStep === 'story' ? 'text-purple-600' : ['audio', 'video'].includes(currentStep) ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'story' ? 'bg-purple-600 text-white' : ['audio', 'video'].includes(currentStep) ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
                 2
               </div>
-              <span className="ml-2 font-medium">Edit Story</span>
+              <span className="ml-2 font-medium text-sm">Story</span>
             </div>
-            <div className={`w-16 h-0.5 ${currentStep === 'audio' ? 'bg-green-600' : 'bg-gray-300'}`}></div>
-            <div className={`flex items-center ${currentStep === 'audio' ? 'text-purple-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'audio' ? 'bg-purple-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+            <div className={`w-12 h-0.5 ${['audio', 'video'].includes(currentStep) ? 'bg-green-600' : 'bg-gray-300'}`}></div>
+            <div className={`flex items-center ${currentStep === 'audio' ? 'text-purple-600' : currentStep === 'video' ? 'text-green-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'audio' ? 'bg-purple-600 text-white' : currentStep === 'video' ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
                 3
               </div>
-              <span className="ml-2 font-medium">Generate Audio</span>
+              <span className="ml-2 font-medium text-sm">Audio</span>
+            </div>
+            <div className={`w-12 h-0.5 ${currentStep === 'video' ? 'bg-green-600' : 'bg-gray-300'}`}></div>
+            <div className={`flex items-center ${currentStep === 'video' ? 'text-purple-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 'video' ? 'bg-purple-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                4
+              </div>
+              <span className="ml-2 font-medium text-sm">Video</span>
             </div>
           </div>
         </div>
@@ -395,11 +443,106 @@ export default function Dashboard() {
                   Edit Story Again
                 </button>
                 <button
-                  onClick={handleGenerateAudio}
-                  disabled={isGeneratingAudio}
+                  onClick={handleGenerateVideo}
+                  disabled={isGeneratingVideo}
                   className="flex-1 bg-purple-600 text-white py-3 px-4 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                 >
-                  Regenerate Audio
+                  {isGeneratingVideo ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Generating Video...
+                    </div>
+                  ) : (
+                    'Generate Video'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Video Player */}
+        {currentStep === 'video' && (
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Your Story Video</h2>
+              <button
+                onClick={handleStartNew}
+                className="text-purple-600 hover:text-purple-700 font-medium"
+              >
+                Create New Story
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Video Player */}
+              {videoUrl && (
+                <div className="bg-purple-50 rounded-lg p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">🎬 Watch your story</h3>
+                  <video controls className="w-full rounded-lg shadow-lg">
+                    <source src={videoUrl} type="video/mp4" />
+                    Your browser does not support the video element.
+                  </video>
+                  
+                  {/* Download Button */}
+                  <div className="mt-4 flex space-x-4">
+                    <a
+                      href={videoUrl}
+                      download="my-story.mp4"
+                      className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                    >
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                      </svg>
+                      Download Video
+                    </a>
+                    {audioUrl && (
+                      <a
+                        href={audioUrl}
+                        download="my-story.mp3"
+                        className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                      >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                        </svg>
+                        Download Audio
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Story Preview */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Story Text:</h3>
+                <div className="text-gray-700 font-serif leading-relaxed max-h-64 overflow-y-auto">
+                  {editedStory.split('\n').map((paragraph, index) => (
+                    <p key={index} className="mb-2">{paragraph}</p>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-4">
+                <button
+                  onClick={handleBackToAudio}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-md hover:bg-gray-300 font-medium transition-colors"
+                >
+                  Back to Audio
+                </button>
+                <button
+                  onClick={handleGenerateVideo}
+                  disabled={isGeneratingVideo}
+                  className="flex-1 bg-purple-600 text-white py-3 px-4 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                >
+                  {isGeneratingVideo ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Regenerating Video...
+                    </div>
+                  ) : (
+                    'Regenerate Video'
+                  )}
                 </button>
               </div>
             </div>
