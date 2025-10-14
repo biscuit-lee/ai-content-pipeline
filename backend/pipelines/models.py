@@ -12,3 +12,6 @@ class AudioRequest(BaseModel):
 class RegenerateRequest(BaseModel):
     existingScript:str
     userCritique: str
+
+class VideoRequest(BaseModel):
+    downloadUrl:str

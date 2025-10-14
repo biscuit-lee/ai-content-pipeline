@@ -8,13 +8,13 @@ class Editor(Agent):
     """
     Handles TTS generation, merging audio, and final output.
     """
-    def __init__(self, voice_ids, model_id="eleven_multilingual_v2"):
+    def __init__(self, voice_ids, model_id="eleven_v3"):
         super().__init__()
         self.voice_ids = voice_ids
         self.model_id = model_id
         self.name_to_voice = {}
 
-    def generate_voice(self, text, speaker, output_path, tts="kokoro"):
+    def generate_voice(self, text, speaker, output_path, tts):
         """
         Generate voice using TTS API.
         
@@ -35,7 +35,7 @@ class Editor(Agent):
                 model_id=self.model_id,
                 text=text,
                 output_format="mp3_44100_128",
-                voice_settings={"stability": 0.6, "similarity_boost": 0.8},
+                voice_settings={"stability": 0.5, "similarity_boost": 0.8},
             )
 
             with open(output_path, "wb") as f:
@@ -88,7 +88,7 @@ class Editor(Agent):
 
         return script_lines
 
-    def generate_audio(self, script_lines, output_dir="voicelines", srt_file="subtitles.srt"):
+    def generate_audio(self, script_lines, output_dir="voicelines", srt_file="subtitles.srt", tts="kokoro"):
         """
         Generate audio files for each line in the script and create an SRT subtitle file.
         """
@@ -105,7 +105,7 @@ class Editor(Agent):
             path_order.append(filename)
             print(f"Generating {speaker}: {line[:30]}...")
             
-            audio_duration = self.generate_voice(line, self.name_to_voice[speaker], filename)
+            audio_duration = self.generate_voice(line, self.name_to_voice[speaker], filename, tts=tts)
             
             # Prepare SRT entry
             start_ms = int(current_time * 1000)

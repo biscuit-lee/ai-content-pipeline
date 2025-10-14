@@ -11,6 +11,15 @@ save/
 *srt
 *.png
 /.venv
+.venv/
+
+# Pycache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.python-version
+
 
 
 # dependencies
@@ -27,9 +36,9 @@ save/
 /coverage
 
 # next.js
-/.next/
-/out/
-/node_modules/
+.next/
+out/
+node_modules/
 
 # production
 /build

@@ -32,8 +32,6 @@ class VisualSource:
 
 class AIImageSource(VisualSource):
     
-    
-
     def fetch(self,query, imageRef=None, save_path="generated_image.png"):
         load_dotenv()
         url = "https://openrouter.ai/api/v1/chat/completions"

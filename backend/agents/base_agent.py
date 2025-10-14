@@ -238,6 +238,7 @@ JSON only:"""
             return None
             
         try:
+            response = response.strip()
             if isinstance(response, dict):
                 print("Response is already a dict, returning as-is")
                 return response
@@ -253,7 +254,14 @@ JSON only:"""
                         pass
                 
                 if response.startswith("```json"):
-                    response = response.split("```json")[1].split("```")[0].strip()
+                    parts = response.split("```json", 1)
+                    content = parts[1] if len(parts) > 1 else parts[0]
+                    # Split only if there *is* a closing ```
+                    if "```" in content:
+                        response = content.split("```", 1)[0].strip()
+                    else:
+                        response = content.strip()
+
                 elif response.startswith("```"):
                     response = response.split("```")[1].split("```")[0].strip()
                 
