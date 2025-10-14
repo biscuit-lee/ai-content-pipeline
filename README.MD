@@ -18,6 +18,8 @@ An intelligent content pipeline that transforms simple prompts into fully-produc
 https://github.com/user-attachments/assets/8db854da-f108-4827-8248-54eecaf5a8db
 
 
+## Reddit story audio demo
+[reddit_story_audio.mp3](https://github.com/user-attachments/files/22905619/reddit_story_audio.mp3)
 
 ## ✨ Key Features
 
