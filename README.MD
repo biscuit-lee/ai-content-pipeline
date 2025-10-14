@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/8db854da-f108-4827-8248-54eecaf5a8db
 
 
 ## Reddit story audio demo
-[reddit_story_audio.mp3](https://github.com/user-attachments/files/22905619/reddit_story_audio.mp3)
+https://github.com/user-attachments/assets/c8052c23-a258-4c97-a8ad-6ad510426d83
 
 ## ✨ Key Features
 
