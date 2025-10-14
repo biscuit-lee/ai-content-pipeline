@@ -14,12 +14,13 @@ from backend.writers.threed_writer import ThreeDWriter
 from backend.production.reviewer import Reviewer
 from backend.production.editor import Editor
 from backend.production.video_director import VideoDirector
+from backend.production.AIImageDirector import AIImageDirector
 from backend.writers.RedditWriter import RedditWriter
-
+from backend.writers.PodcastWriter import PodcastWriter
 import backend.prompts as prompts
 from backend.pipelines.models import *
 from backend.utils import *
-
+from backend.production.TTS_optimizer import TTS_optimizer
 
 # Load environment variables
 backend_dir = Path(__file__).parent
@@ -44,6 +45,9 @@ VOICE_IDS = {
 
 # FastAPI app
 app = FastAPI()
+
+state = {"currentFolder": ""}
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -86,7 +90,12 @@ async def generate_story(request: StoryRequest):
         # 3D animated story
         writer = ThreeDWriter()
         generated_story = writer.generate_script(topic=prompt, type="whatif")
-        
+    
+    elif story_type == "podcast":
+        # Podcast style story with multiple voices
+        writer = PodcastWriter()
+        generated_story = writer.generate_script(topic=prompt)
+
     elif story_type == "reddit":
         # General story with LLM-driven idea generation
         generator = IdeaGeneratorLLM()
@@ -100,7 +109,10 @@ async def generate_story(request: StoryRequest):
 
         print("Generated story idea:", genre_idea)
         print("Generated script:", generated_story)
-    
+
+    # If script is too long, truncate it (temporary solution)
+    #generated_story["story"] = generated_story["story"][:3]
+    generated_story["story"] = generated_story.get("story", [])[:3]  # Limit to first 10 lines for testing
     return generated_story
 
 
@@ -109,6 +121,7 @@ async def generate_audio(request: AudioRequest):
     script = request.story
     tts_provider = request.ttsProvider
 
+    
     print("Received script for audio generation:", script)
     #script_chunks = split_texts_by_paragraph(script)
     editor = Editor(VOICE_IDS)
@@ -118,13 +131,25 @@ async def generate_audio(request: AudioRequest):
     new_topic_folder = os.path.join(os.getcwd(), "backend", new_topic_name)
     os.makedirs(new_topic_folder, exist_ok=True)
 
+    state["currentFolder"] = new_topic_folder
+
     # Generate subtitles and audio
-    subtitle_output_path = os.path.join(new_topic_folder, "subtitles.srt")
+    subtitle_output_path = os.path.join(state["currentFolder"], "subtitles.srt")
+
+    print("Starting audio generation process... \n current folder is: ", state["currentFolder"])
+
+    if tts_provider == "elevenlabs":
+        script_lines = TTS_optimizer().optimize_tts_text(str(script))
+
+
     script_lines = editor.analyze_script(script, subtitle_output_path=subtitle_output_path)
-    audio_files = editor.generate_audio(script_lines, output_dir="output", srt_file=subtitle_output_path)
+
+
+
+    audio_files = editor.generate_audio(script_lines, output_dir="output", srt_file=subtitle_output_path, tts=tts_provider)
 
     # Merge audio files
-    audio_file_name = "generated_audio.mp3"
+    audio_file_name = "audio.mp3"
     save_file_path = os.path.join(new_topic_folder, audio_file_name)
     merged_audio = editor.merge_audio(audio_files, final_output=save_file_path)
 
@@ -153,20 +178,70 @@ async def regenerate_script(request: RegenerateRequest):
 
     return new_script
 
+@app.post("/api/generate-video")
+async def generate_video(request: VideoRequest):
 
+    state["currentFolder"] = "/home/grognak/personalpjk/automatedRedditStoryGen/backend/Generated_Audio_Topic_20251014_041715"
+    print("Starting video generation process... \n current folder is: ", state["currentFolder"])
+    editor = Editor(VOICE_IDS)
+    director = AIImageDirector()
+    #director.generate_image_seq_from_subtitles()
+
+    # Audio download url
+    downloadUrl = request.downloadUrl
+
+    download_from_url(downloadUrl, os.path.join(state["currentFolder"], "audio.mp3"))
+    subtitle_path = os.path.join(state["currentFolder"], "subtitles.srt")
+
+    print("Subtitle path:", subtitle_path)
+    print("Received downloadURL for video generation:", downloadUrl)
+    
+    
+    video_path = os.path.join(state["currentFolder"], "final_video_no_sound2.mp4")
+    
+    video_file_path = director.generate_image_seq_from_subtitles(video_file=video_path, subtitle_file=subtitle_path)
+
+    editor.merge_visuals_video(visual_file=video_file_path, audio_file=os.path.join(state["currentFolder"], "audio.mp3"), final_output=os.path.join(state["currentFolder"], "final_video.mp4"))
+    
+    print(f"✅ Video generation complete! File saved to: {video_file_path}")
+
+    
+    upload_result = upload_video_to_s3(video_path)
+    
+    if not upload_result['success']:
+        return {
+            'success': False,
+            'error': 'Video upload failed'
+        }
+    
+    return upload_result
 
 # Main execution (when running as script)
 if __name__ == "__main__":
     # Example usage
-    print(" CONTENT GENERATION PIPELINE \n")
     
-        # Upload to S3
-    with open("/home/grognak/personalpjk/automatedRedditStoryGen/backend/Generated_Audio_Topic_20251009_141741/generated_audio.mp3", "rb") as f:
-        audio_content = f.read()
-    
-    upload_result = upload_audio_to_s3(audio_content)
+    editor = Editor(VOICE_IDS)
+    director = AIImageDirector()
+    state["currentFolder"] = os.path.join(os.getcwd(), "backend", "Generated_Audio_Topic_20251009_155151")
 
-    print("Audio generation and upload complete:", upload_result)
+
+    #download_from_url(downloadUrl, os.path.join(state["currentFolder"], "audio.mp3"))
+    subtitle_path = os.path.join(state["currentFolder"], "subtitles.srt")
+    video_path = os.path.join(state["currentFolder"], "final_video_no_sound2.mp4")
+    audio_path = os.path.join(state["currentFolder"], "audio.mp3")
+    #print("Received downloadURL for video generation:", downloadUrl)
+    
+    
+    video_path = os.path.join(state["currentFolder"], "final_video_no_sound2.mp4")
+    
+    #video_file_path = director.generate_image_seq_from_subtitles(video_file=video_path, subtitle_file=subtitle_path)
+
+    editor.merge_visuals_video(visual_file=video_path, audio_file=audio_path, final_output=os.path.join(state["currentFolder"], "final_video.mp4"))
+    
+    upload_result = upload_video_to_s3(video_path)
+
+    print(f"✅ Video generation complete! File saved to: {video_path}")
+    
 
 
     # 1. Generate idea

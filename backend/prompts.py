@@ -198,6 +198,186 @@ Remember: The goal is to make viewers feel like they're hearing a true account f
 Provide ONLY JSON OUTPUT nothinng before or after
 
 """
+prompt_podcast_joerogan = """
+You are crafting a three-person podcast conversation in the {topic} topic — inspired by the natural, long-form, and thought-provoking style of the Joe Rogan Experience.  
+
+Your goal is to make it feel authentic, conversational, and unscripted — like three people sharing stories, theories, and laughs over coffee or whiskey.  
+
+---
+
+PODCAST STRUCTURE:
+
+Opening Hook (30–60 seconds):  
+- Start mid-discussion or with a punchy, curious line.  
+- Immediately introduce energy or controversy around the topic.  
+- Let the host set the tone, then pull in the guest naturally.  
+(Example: “Man, people have *no idea* how weird {topic} actually gets when you look into it.”)
+
+Early Conversation (3–4 minutes):  
+- HOST1 introduces the topic loosely and asks open questions.  
+- GUEST explains or shares opinions and experiences.  
+- HOST2 adds humor, skepticism, or relatable comments to keep it lively.  
+- Keep natural rhythm — small tangents, jokes, or interruptions are good.  
+- Use sensory or emotional language (“I remember walking in and feeling like…”).
+
+Deep Dive (4–6 minutes):  
+- Let the guest expand on their perspective or story in depth.  
+- HOST1 occasionally redirects or probes deeper (“But why do you think that happens?”).  
+- HOST2 provides comedic relief or challenges ideas casually (“Nah, dude, that can’t be real.”).  
+- Include small tangents or side-stories that feel spontaneous — that’s what makes it human.
+
+Philosophical or Emotional Moment (2–3 minutes):  
+- The conversation slows down briefly for reflection or deeper insight.  
+- Could touch on human behavior, personal growth, or unexpected vulnerability.  
+- Use pauses, empathy, or surprise reactions to make it feel real.
+
+Wrap-Up (1–2 minutes):  
+- End casually — not like a scripted outro.  
+- HOST1 summarizes takeaways or thanks the guest.  
+- HOST2 might crack a joke or bring it full circle.  
+- Optionally tease a future episode or callback.
+
+---
+
+VOICE & AUTHENTICITY:
+
+- Three consistent speakers: HOST1, HOST2, and GUEST.  
+- Conversational flow — natural overlaps, filler words, laughs, or pauses.  
+- Distinct personalities:
+  - HOST1: curious, thoughtful, grounded  
+  - HOST2: funny, skeptical, relatable  
+  - GUEST: knowledgeable, authentic, sometimes eccentric or insightful  
+- Mention specific brands, pop culture, or personal details for realism.  
+- Avoid robotic or lecture-like tone.  
+- Encourage chemistry — sometimes they agree, sometimes they banter.
+
+---
+
+PODCAST CONVENTIONS:
+
+- Use ellipses (...) for pauses and em dashes (—) for interruptions.  
+- Add small interjections (“Wait—what?”, “No way.”, “That’s wild.”).  
+- Keep pacing natural — 1–3 sentences per line.  
+- Avoid long blocks of monologue unless broken by reactions.  
+- Occasionally refer to real-life context (“Jamie, pull that up.”, “I saw that clip on Twitter yesterday.”).  
+
+---
+
+TARGET METRICS:
+
+Length: 800–1000 words (≈8–10 minutes)  
+Hook: within 20 seconds  
+Balance: 40% guest insights, 30% host reactions, 30% humor/tangents  
+Emotion beats: 3–4 points of curiosity, surprise, or laughter  
+
+---
+
+***VOICE***
+You can choose 4 voices for the narration MAN1, MAN2, WOMAN1, or WOMAN2 based on what suits the conversation best.
+
+**JSON FORMAT:**
+EXAMPLE
+{{
+    "Characters": {{
+        "HOST1": "MAN1",
+        "HOST2": "MAN2",
+        "GUEST": "MAN1"
+    }},
+    "story": [
+        {{"speaker": "HOST1", "line": "You ever think about how weird it is that we just accept dreams as normal? Like, every night your brain just makes a movie for fun."}},
+        {{"speaker": "GUEST", "line": "Yeah, and we barely understand any of it. People still think dreams mean something, but most of it’s just neural noise."}},
+        {{"speaker": "HOST2", "line": "Nah man, I had this one dream where I fought a bear in my kitchen — that meant *something*."}},
+        {{"speaker": "HOST1", "line": "What, like your fridge was your subconscious?"}},
+        {{"speaker": "GUEST", "line": "Actually, there’s some truth to that. Your brain pulls familiar symbols. The kitchen could represent comfort, survival, or memory."}},
+        {{"speaker": "HOST2", "line": "Or hunger. Definitely hunger."}},
+        {{"speaker": "HOST1", "line": "There it is — the deep psychology of snacks and bears."}}
+    ]
+}}
+"""
+
+prompt_podcast_narration = """
+You are crafting a two-person podcast-style true story for YouTube narration in the {topic} genre.  
+
+Study this successful format:
+
+PODCAST STRUCTURE:
+
+Opening Hook (30–60 seconds):  
+Start mid-conversation or with a strong emotional or intriguing statement that hooks the listener immediately.  
+Reveal just enough context to make the audience curious:  
+- Who are the speakers?  
+- What’s the strange or dramatic thing that happened?  
+- Why are they talking about it now?
+
+Story Setup (2–3 minutes):  
+- One host (A) begins recounting a true story or personal event.  
+- The other host (B) reacts naturally — asking questions, teasing, or sharing quick takes.  
+- Include specific, realistic details:  
+  - Age, location, relationships, routines, specific brands or places  
+  - Why the moment was significant or vulnerable  
+  - Authentic small talk or interruptions to make it feel unscripted
+
+Rising Action (3–5 minutes):  
+- Escalate the tension or emotional intensity as the story progresses.  
+- Alternate between storytelling (A) and reactions (B).  
+- Include 2–3 “beats” of rising uncertainty, surprise, or curiosity.  
+- Example moments: unexpected discovery, confrontation, eerie realization.  
+- Keep pacing dynamic — let one speaker interrupt or question the other to feel alive and conversational.
+
+Climax (1–2 minutes):  
+- The peak moment — confrontation, shocking twist, or emotional release.  
+- Use short, overlapping lines, pauses, and unfinished sentences to make the dialogue feel real.  
+- Keep reactions believable — not overacted, but emotionally authentic.
+
+Resolution (1–2 minutes):  
+- Hosts reflect, laugh nervously, or draw a conclusion.  
+- One might remain skeptical while the other insists it was real.  
+- Tie it back to the opening or a personal insight.  
+- Optionally end with a listener prompt or cliffhanger for engagement.
+
+VOICE & AUTHENTICITY:
+
+Conversational tone: like two friends recording a late-night talk, not reading a script.  
+Use natural speech patterns — hesitations, filler words, overlapping dialogue.  
+Include emotion, humor, and subtle banter.  
+Each host should have a distinct personality (e.g., skeptical vs. believer, logical vs. emotional).  
+Specificity is key: mention brand names, timestamps, relatable references, etc.  
+Avoid monologues longer than 3–4 turns without response.
+
+ATMOSPHERE & PACING:
+
+Include background or ambient context briefly (“you can hear the rain outside,” “my phone buzzes”).  
+Use pauses and pacing:  
+- Ellipses (...) for hesitation or suspense  
+- Em dashes (—) for interruptions  
+- Short sentences for impact, longer ones for storytelling rhythm  
+
+Avoid unnatural scripting or exposition. Let curiosity build through conversation.  
+
+TARGET METRICS:
+
+Length: 600–800 words (≈6–8 minutes)  
+Hook timeline: intrigue within first 15 seconds  
+Tension beats: 3–4 escalating moments  
+Resolution: satisfying but leaves small mystery or emotional residue  
+
+***VOICE***
+You can choose 4 voices for the narration MAN1, MAN2, WOMAN1, or WOMAN2 based on what suits the story best.
+
+**JSON FORMAT:**
+EXAMPLE
+{{
+    "Characters": {{"HOST1": "WOMAN1", "HOST2": "MAN2"}},
+    "story": [
+        {{"speaker": "HOST1", "line": "Okay, I still get chills thinking about this — you remember that night I told you about?"}},
+        {{"speaker": "HOST2", "line": "Wait, the one with the knocking sound at 3 A.M.?"}},
+        {{"speaker": "HOST1", "line": "Yeah. Every night, same time. I even tried recording it once."}},
+        {{"speaker": "HOST2", "line": "And did you catch anything?"}},
+        {{"speaker": "HOST1", "line": "That’s the thing... I did. But not what you’d expect."}}
+    ]
+}}
+"""
+
 
 prompt_dialogue = """
 You are creating a dialogue-driven {genre} story for a viral YouTube channel. Focus on explosive conversations and character conflicts that keep viewers engaged.
@@ -5072,7 +5252,7 @@ Given the following subtitles from a story with timestamps:
 
 **YOUR TASK:**
 
-1. **ANALYZE:** First, read the entire script and write a brief (2-3 sentence) summary of its core narrative arc. This ensures you understand the overall story.
+1. **ANALYZE:** First, read the entire script and write a brief (2-3 sentence) summary of its core narrative arc. This ensures you understand the overall story. Analyze internally BUT do not output this in the response.
 
 2. **UNDERSTAND VISUAL STORYTELLING PRINCIPLES:**
    - **Align visuals with narrative beats** – Each segment should have corresponding visuals that reflect the mood. For example: depict an old apothecary for backstory, a dark courtroom for conflict, a triumphant sunrise for resolution.
@@ -5111,38 +5291,35 @@ Then, return a valid JSON list of objects with these EXACT keys:
 - "image_prompt": (String) A detailed, cinematic prompt for AI image generation. Include composition, lighting, mood, color palette, and style. (e.g., "Wide angle shot of an abandoned 1920s apothecary interior, dusty glass bottles on wooden shelves, warm sepia tones filtering through grimy windows, photorealistic, cinematic lighting, shallow depth of field")
 
 **CRITICAL REQUIREMENTS:**
-1. Output MUST be valid JSON parseable by Python
+1. Output MUST ONLY be  valid JSON, DO NOT INCLUDE ANYTHING ELSE outside the JSON structure
 2. Use subtitle timestamps to determine start_time and end_time
 3. The sequence should span the ENTIRE duration of the subtitles
 4. Only include visuals for the most impactful narrative moments (not every single line)
 5. Maintain visual variety - alternate between wide/close shots, different color palettes, different subjects
 6. Each image should display long enough to register (minimum 4-5 seconds recommended)
-7. Do NOT add any text outside the JSON structure
 
 **Example Output:**
 
-Narrative Arc Summary: The story follows a tragic tale of medical malpractice in 1920s America, building from innocent origins through growing suspicion to ultimate revelation and justice. The arc moves from warm nostalgia to cold realization, using visual metaphors of light and shadow.
 
-[
-  {{
+{{
     "start_time": 0,
     "end_time": 6,
     "narrative_purpose": "Establishes the historical setting and creates nostalgic atmosphere",
     "image_prompt": "Wide establishing shot of a 1920s small town main street at golden hour, horse-drawn carriages, vintage storefronts with hand-painted signs, warm amber lighting, photorealistic, cinematic composition, documentary style",
-  }},
-  {{
+    }},
+    {{
     "start_time": 6,
     "end_time": 12,
     "narrative_purpose": "Introduces the central object of mystery with ominous undertones",
     "image_prompt": "Dramatic close-up of an antique medicine bottle with faded label, sitting on weathered wooden surface, single beam of dusty light illuminating the bottle, dark shadows around edges, shallow depth of field, moody atmospheric lighting, photorealistic",
-  }},
-  {{
+    }},
+    {{
     "start_time": 12,
     "end_time": 18,
     "narrative_purpose": "Builds tension through visual metaphor of hidden danger",
     "image_prompt": "Abstract composition of swirling dark liquid mixing with clear water in vintage glass, backlit with cold blue light creating ominous patterns, macro photography style, high contrast, cinematic, slightly desaturated colors",
-  }}
-]
+}}
+
 
 Now, analyze the provided subtitles and create your visual shot list
 """

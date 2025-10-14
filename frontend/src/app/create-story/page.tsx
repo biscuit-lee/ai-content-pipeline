@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [audioUrl, setAudioUrl] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
   const [tmpJson, setTmpJson] = useState(null) 
+  const [audioDownloadUrl, setAudioDownloadUrl] = useState('')
   // Loading states
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
@@ -114,7 +115,7 @@ export default function Dashboard() {
         const data = await response.json()
         console.log('Audio generation response:', data)
         setAudioUrl(data.audioUrl)
-
+        setAudioDownloadUrl(data.downloadUrl)
         console.log('Audio URL:', data.audioUrl)
         console.log('variable audioUrl:', audioUrl)
         setCurrentStep('audio')
@@ -140,8 +141,7 @@ export default function Dashboard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          story: tmpJson,
-          audioUrl: audioUrl,
+          downloadUrl: audioDownloadUrl || audioUrl,
         }),
       })
       
@@ -411,7 +411,7 @@ export default function Dashboard() {
                   {/* Download Button */}
                   <div className="mt-4">
                     <a
-                      href={audioUrl}
+                      href={audioDownloadUrl || audioUrl}
                       download="my-story.mp3"
                       className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
                     >

@@ -7,7 +7,7 @@ class RedditWriter(Agent):
     Handles scripts: input, formatting, and speaker assignment.
     """
     def __init__(self):
-        super().__init__()
+        super().__init__(model="google/gemini-2.5-flash")
 
         self.niches = ["relationship betrayal",
             "workplace revenge",

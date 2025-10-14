@@ -2,14 +2,13 @@ import boto3
 import uuid
 import os
 from dotenv import load_dotenv
+import requests
 
 # Upload file and get URLs
 def upload_audio_to_s3(audio_content, filename=None):
     try:
                 
         load_dotenv()
-
-
         AWS_KEY    = os.getenv("AWS_ACCESS_KEY")
         AWS_SECRET = os.getenv("AWS_SECRET_KEY")
         AWS_REGION = os.getenv("AWS_REGION")
@@ -72,6 +71,8 @@ def upload_audio_to_s3(audio_content, filename=None):
             'error': str(e)
         }
 
+
+
 def split_texts_by_paragraph(text: str) -> list:
     """
     Splits a long text into paragraphs based on double newlines.
@@ -79,6 +80,84 @@ def split_texts_by_paragraph(text: str) -> list:
     """
     paragraphs = [para.strip() for para in text.split("\n\n") if para.strip()]
     return paragraphs
+
+def download_from_url(url, save_path):
+    """Download a file from a download URL (from aws) and save it to the specified path."""
+    
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(save_path, 'wb') as f:
+            f.write(response.content)
+        return save_path
+    else:
+        raise Exception(f"Failed to download file from {url}, status code: {response.status_code}")
+
+def upload_video_to_s3(video_path, filename=None):
+    try:
+                
+        load_dotenv()
+        AWS_KEY    = os.getenv("AWS_ACCESS_KEY")
+        AWS_SECRET = os.getenv("AWS_SECRET_KEY")
+        AWS_REGION = os.getenv("AWS_REGION")
+        BUCKET     = os.getenv("AWS_BUCKET_NAME")
+
+
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=AWS_KEY,
+            aws_secret_access_key=AWS_SECRET,
+            region_name=AWS_REGION
+        )
+
+        # ADD THIS DEBUG
+        print(f"🔍 DEBUG - BUCKET value: {BUCKET}")
+        print(f"🔍 DEBUG - AWS_REGION value: {AWS_REGION}")
+        
+
+        # Generate unique filename if none provided
+        if not filename:
+            filename = f"video/{uuid.uuid4()}.mp4"
+        
+        # Upload to S3
+        with open(video_path, "rb") as video_file:
+            s3.put_object(
+                Bucket=BUCKET,
+                Key=filename,
+                Body=video_file,
+                ContentType='video/mp4',
+                CacheControl='max-age=3600'
+            )
+        
+        # Generate presigned URL (temporary, secure)
+        video_url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': BUCKET, 'Key': filename},
+            ExpiresIn=3600  # 1 hour expiration
+        )
+        
+        # Generate download URL
+        download_url = s3.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': BUCKET, 
+                'Key': filename,
+                'ResponseContentDisposition': 'attachment; filename="story.mp4"'
+            },
+            ExpiresIn=3600
+        )
+        
+        return {
+            'success': True,
+            'videoUrl': video_url,
+            'downloadUrl': download_url,
+            'filename': filename
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e)
+        }
 
 
 if __name__ == "__main__":

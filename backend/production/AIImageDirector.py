@@ -18,21 +18,24 @@ from dotenv import load_dotenv
 import json
 import base64
 import math
+from backend.prompts import ai_gen_prompt
 
-
-class Director(Agent):
+class AIImageDirector(Agent):
     """
     Oversees the coordination between the audio and the visuals.
     """
 
     def __init__(self):
-        super().__init__()
-        self.llm_model = "deepseek/deepseek-chat-v3.1:free"
+        super().__init__(model="google/gemini-2.5-flash")
+        self.llm_model = "tngtech/deepseek-r1t2-chimera:free"
         self.download_dir = "images"
+
+        if not os.path.exists(self.download_dir):
+            os.makedirs(self.download_dir)
+        
     
     
-    def load_srt_file(self, srt_file="subtitles.srt"):
-        srt_file = "subtitles.srt"
+    def load_srt_file(self, srt_file):
 
         # Read entire SRT file into a string
         with open(srt_file, "r", encoding="utf-8") as f:
@@ -124,7 +127,7 @@ class Director(Agent):
             return
         
         # Process the response
-        print("Response received from OpenRouter: ", result)
+        #print("Response received from OpenRouter: ", result)
 
         if result.get("choices"):
             message = result["choices"][0]["message"]
@@ -133,7 +136,7 @@ class Director(Agent):
             if message.get("images"):
                 for image in message["images"]:
                     image_url = image["image_url"]["url"]
-                    print(f"Generated image URL: {image_url[:50]}...")
+                    #print(f"Generated image URL: {image_url[:50]}...")
                     
                     # If it's a base64 data URL, decode and save it
                     if image_url.startswith("data:image"):
@@ -159,7 +162,7 @@ class Director(Agent):
             return path
 
 
-    def generate_image_seq_from_subtitles(self, video_file="final_video_no_sound.mp4"):
+    def generate_image_seq_from_subtitles(self,subtitle_file, video_file="final_video_no_sound2.mp4"):
         """
         Analyze the script with an LLM and fetch appropriate Pixabay images for each story line.
 
@@ -168,34 +171,14 @@ class Director(Agent):
         #story_data = script_text.get("story", [])
         results = []
 
-        srt_content = self.load_srt_file("subtitles.srt")
+        print("Loading SRT file: ", subtitle_file)
 
+        srt_content = self.load_srt_file(srt_file=subtitle_file)
 
+        print("SERT CONTENT: ", srt_content[:500])
         # Ask LLM what kind of image would suit this line
-        prompt = f"""
-            You are an expert story teller visual.
-            Given the following subtitles from a story: \"\"\"{srt_content}\"\"\"
-            Your goal is to make the best possible video by selecting relevant images for the WHOLE story.
-            You do not need to make an image for every line, only the most relevant ones that will help tell the story.
-            It is advisable that you should only show the environrment and not the characters, unless it is absolutely necessary.
-
-            Requirements:
-            1. Output must be valid JSON, parseable by Python.
-            2. JSON format: List of objects with keys:
-            - "start_time": time in seconds the image should appear
-            - "end_time": time in seconds the image should disappear
-            - "keywords": a few words describing the image for Pixabay search
-            3. Only include images that are relevant to the line.
-            4. Do not add extra text outside the JSON.
-            5. The sequence of images have to be longer than the subtitle suggest
-
-            Example output:
-            [
-            {{"start_time": 0.0, "end_time": 5.2, "keywords": "dark forest, night, fog"}},
-            {{"start_time": 5.2, "end_time": 8.7, "keywords": "mysterious cabin, lights on"}}
-            ]
-            """
-
+        
+        prompt = ai_gen_prompt.format(srt_content=srt_content)
         clips = []
         
         print("Promt: ", prompt)
@@ -239,8 +222,9 @@ class Director(Agent):
 
         return video_file
 
+
 if __name__ == "__main__":
-    director = Director()
+    director = AIImageDirector()
     director.generate_image_seq_from_subtitles()
 
 # ./backend/.venv/bin/python -m backend.production.video_director
