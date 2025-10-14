@@ -13,8 +13,9 @@ An intelligent content pipeline that transforms simple prompts into fully-produc
 **Built for**: Automated content creation, podcast production, educational content, and narrative storytelling
 
 
-**Demo**
+##Demo
 
+https://github.com/user-attachments/assets/8db854da-f108-4827-8248-54eecaf5a8db
 
 
 
