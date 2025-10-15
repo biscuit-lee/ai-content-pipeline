@@ -19,12 +19,20 @@ https://github.com/user-attachments/assets/8db854da-f108-4827-8248-54eecaf5a8db
 
 
 ## Reddit story audio demo
-https://github.com/user-attachments/assets/c458a97e-09c0-47e1-8980-5fce0afc4ba8
+Prompt: Tell a short halloween story
 
 https://github.com/user-attachments/assets/c8052c23-a258-4c97-a8ad-6ad510426d83
 
 ## Business psychology audio
+Prompt: Research the psyhoclogy of why most stores put the milk at the back of the store
+
 https://github.com/user-attachments/assets/31862b56-b708-4412-a74b-1b54fb53ecc1
+
+## Podcast style
+Prompt: Discusss how crazy fast cheetahs are
+
+https://github.com/user-attachments/assets/224fa60b-ea89-47e5-8b70-499169305f6c
+
 
 ## ✨ Key Features
 
