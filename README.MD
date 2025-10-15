@@ -19,6 +19,8 @@ https://github.com/user-attachments/assets/8db854da-f108-4827-8248-54eecaf5a8db
 
 
 ## Reddit story audio demo
+https://github.com/user-attachments/assets/c458a97e-09c0-47e1-8980-5fce0afc4ba8
+
 https://github.com/user-attachments/assets/c8052c23-a258-4c97-a8ad-6ad510426d83
 
 ## Business psychology audio
