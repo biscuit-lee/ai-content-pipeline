@@ -70,6 +70,15 @@ https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
 
 ---
 
+## 💭 What I Learned
+
+- **Agent orchestration** – How to design systems where AI autonomously decides which tools to use
+- **Multi-step reasoning** – Breaking complex tasks into executable pipelines that maintain context
+- **Tool integration** – Making multiple AI services work together reliably
+- **Prompt engineering** – Crafting prompts that guide agent behavior across different content styles
+- **System design** – Building modular architectures that can easily support new features
+
+
 ## 📝 License
 
 MIT License
