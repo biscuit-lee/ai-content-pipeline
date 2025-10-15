@@ -70,16 +70,6 @@ https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
 
 ---
 
-## 🤝 Technical Approach
-
-This project demonstrates:
-
-- **Agentic System Design** – Modular agent architecture where autonomous reasoning guides multi-step content generation workflows. The agent decides which tools to invoke, when to perform web research, and how to adapt the pipeline based on content type.  
-- **Tool Orchestration** – Seamless integration of multiple AI services (LLMs, TTS, image generation, search APIs) as agent tools, with context-aware decision-making about which tools to use at each stage.  
-- **Multi-Step Reasoning** – Agent breaks down complex prompts into executable sub-tasks (research → scripting → audio synthesis → visual generation), maintaining semantic context throughout the pipeline.  
-- **Prompt Engineering for Agents** – Iterative optimization of system prompts to guide agent behavior while preserving flexibility. Designed prompts that enable consistent outputs across storytelling, educational, and conversational formats.  
-- **Full-Stack Development** – Backend deployment with FastAPI for async task orchestration, Next.js frontend for agent interaction, and cloud integration via AWS and Supabase for state management.  
-
 ## 📝 License
 
 MIT License
