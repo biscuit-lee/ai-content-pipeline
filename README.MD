@@ -26,7 +26,11 @@ https://github.com/user-attachments/assets/c8052c23-a258-4c97-a8ad-6ad510426d83
 ## Business psychology audio
 Prompt: Research the psyhoclogy of why most stores put the milk at the back of the store
 
-https://github.com/user-attachments/assets/31862b56-b708-4412-a74b-1b54fb53ecc1
+https://github.com/user-attachments/assets/2dfb8f62-8788-4b3a-aebb-86e7a8d9e8ed
+
+## Whole pipeline of halloween story with pictures
+https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
+
 
 ## Podcast style
 Prompt: Discusss how crazy fast cheetahs are
@@ -66,7 +70,7 @@ https://github.com/user-attachments/assets/224fa60b-ea89-47e5-8b70-499169305f6c
   - Custom FastAPI inference server
 - **Image Generation**: Google Nano banana
 - **Web Research**: Tavily
-- **Backend**: FastAPI for model serving, aws for storing 
+- **Backend**: FastAPI for model serving, aws for storing generated audio and video files
 - **Orchestration**: Python async pipeline
 
 ## 💡 Innovation Highlights
@@ -106,24 +110,22 @@ Web search integration ensures factual accuracy:
 
 ## 🎯 Future Roadmap
 
-- [ ] Improve image generations ability to understand 
-- [ ] Custom voice cloning integration
-- [ ] Video composition with B-roll footage
-- [ ] Analytics dashboard for content performance
+- [ ] Improve image generation to support multiple images per section
+- [ ] Add cinematic effects to videos (e.g., slow zoom, pan, etc.)
+- [ ] Enable story regeneration with user provided improvement feedback
+
+---
 
 ## 🤝 Technical Approach
 
 This project demonstrates:
-- **System Design**: Modular pipeline architecture for scalable content production
-- **API Integration**: Orchestrating multiple AI services (LLM, TTS, image gen, search)
-- **Optimization**: Hybrid cloud/local approach for cost-performance balance
-- **Prompt Engineering**: Data driven prompt optimization for specific content styles
-- **Full-Stack Development**: Backend service deployment (FastAPI), Frontend deployment (Nextjs) and Cloud web services integration (AWS, SUPABASE)
+
+- **System Design** – Modular, pipeline-based architecture for scalable content generation. Supports multiple story types, audio generators, and video formats (AI-generated, B-roll, etc.).
+- **API Integration** – Seamless orchestration of multiple AI services, including LLMs, TTS, image generation, and search APIs.
+- **Optimization** – Hybrid cloud/local setup balancing performance and cost efficiency.
+- **Prompt Engineering** – Data-driven optimization of prompts for consistent, high-quality content styles.
+- **Full-Stack Development** – Backend deployment with FastAPI, frontend with Next.js, and cloud integration via AWS and Supabase.
 
 ## 📝 License
 
-MIT License - See LICENSE file for details
-
-## 🌟 Acknowledgments
-
-Built with modern AI tools to solve real content production challenges. Designed for scalability, cost-efficiency, and production quality.
+MIT License
