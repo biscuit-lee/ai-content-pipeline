@@ -2,11 +2,11 @@
 
 ## 🚀 Overview
   
-A personal project exploring AI agents for autonomous content creation. Built to experiment with how AI can coordinate multiple tools—language models, text to speech, image generation, and web search to complete multi-step creative tasks with minimal guidance.
+A personal project exploring AI agents for autonomous content creation. Built to experiment with how AI can coordinate multiple tools,language models, text to speech, image generation, and web search to complete multi-step creative tasks with minimal guidance.
 
 Focus Areas: Agent orchestration, multi-step reasoning, tool selection, and building pipelines where AI decides which tool to use and when.
 
-##Demo
+## Demo
 
 https://github.com/user-attachments/assets/8db854da-f108-4827-8248-54eecaf5a8db
 
@@ -28,18 +28,17 @@ Prompt: Discusss how crazy fast cheetahs are
 
 https://github.com/user-attachments/assets/224fa60b-ea89-47e5-8b70-499169305f6c
 
-## Whole pipeline of halloween story with pictures
+## Final video of the halloween story
 https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
 
 
 
-## ✨ Key Features
+## What It Can Create
 
-- **Storytelling:** Viral Reddit-style narratives with hooks and emotional arcs  
-- **Dialogue Simulation:** Natural two-speaker podcast conversations  
-- **Voice Synthesis:** Supports cloud (ElevenLabs) and local (Kokoro) TTS with FastAPI inference  
-- **Dynamic Visuals:** Context-aware images synchronized to the audio  
-- **Fact-Grounded Content:** Real-time web search integration for accuracy  
+- **Reddit-style stories** with emotional arcs and hooks
+- **Podcast conversations** between two natural-sounding speakers  
+- **Research-based content** using real web searches for accuracy
+- **Videos with synchronized visuals** that match the audio content (current only surpport AI-generate images)
 
 ---
 
@@ -48,19 +47,11 @@ https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
 - **Language Models:** Claude / GPT-4 via OpenRouter  
 - **Voice Synthesis:** ElevenLabs, Kokoro, FastAPI server  
 - **Image Generation:** Google Nano Banana  
-- **Web Research:** Tavily API  
+- **Web Research:** Tavily API 
 - **Backend:** FastAPI + AWS S3 storage  
 - **Pipeline Orchestration:** Python async workflows  
 
 ---
-
-## 💡 Highlights
-
-- **Prompt Engineering:** Optimized prompts for storytelling, research, and natural dialogue  
-- **Hybrid TTS Architecture:** Combines cloud & local solutions for quality, cost, and privacy  
-- **Modular Design:** Easy to extend to new story types, text-to-speech providers or audio-visual formats
-
-
 
 ## 🎯 Future Roadmap
 
@@ -76,7 +67,7 @@ https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
 - **Multi-step reasoning** – Breaking complex tasks into executable pipelines that maintain context
 - **Tool integration** – Making multiple AI services work together reliably
 - **Prompt engineering** – Crafting prompts that guide agent behavior across different content styles
-- **System design** – Building modular architectures that can easily support new features
+- **System design** – Building modular architectures that can easily support new features (Story types, tts providers etc..)
 
 
 ## 📝 License
