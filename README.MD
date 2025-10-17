@@ -4,8 +4,6 @@
   
 A personal project exploring AI agents for autonomous content creation. Built to experiment with how AI can coordinate multiple tools,language models, text to speech, image generation, and web search to complete multi-step creative tasks with minimal guidance.
 
-Focus Areas: Agent orchestration, multi-step reasoning, tool selection, and building pipelines where AI decides which tool to use and when.
-
 ## Demo
 
 https://github.com/user-attachments/assets/8db854da-f108-4827-8248-54eecaf5a8db
