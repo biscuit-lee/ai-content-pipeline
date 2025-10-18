@@ -25,10 +25,8 @@ https://github.com/user-attachments/assets/2dfb8f62-8788-4b3a-aebb-86e7a8d9e8ed
 ## Podcast style
 **Prompt:** `Discuss how crazy fast cheetahs are`
 
-This audio was generated using **Kokoro (local TTS)**.  
-It is **lower quality** compared to ElevenLabs but more cost-effective.  
-
 https://github.com/user-attachments/assets/224fa60b-ea89-47e5-8b70-499169305f6c
+
 
 ## Final video of the halloween story
 https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
