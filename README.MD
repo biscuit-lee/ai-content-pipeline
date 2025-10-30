@@ -36,8 +36,8 @@ https://github.com/user-attachments/assets/3486fc18-306f-4793-a4d1-4955eb174ebb
 ## What It Can Create
 
 - **Reddit-style stories** with emotional arcs and hooks
-- **Podcast conversations** between two natural-sounding speakers  
-- **Research-based content** using real web searches for accuracy
+- **Podcast conversations** between two speakers  
+- **Research-based content** using real web searches tool for accuracy
 - **Videos with synchronized visuals** that match the audio content (current only surpport AI-generate images)
 
 ---
@@ -45,11 +45,10 @@ https://github.com/user-attachments/assets/3486fc18-306f-4793-a4d1-4955eb174ebb
 ## 🛠️ Tech Stack
 
 - **Language Models:** Claude / GPT-4 via OpenRouter  
-- **Voice Synthesis:** ElevenLabs, Kokoro, FastAPI server  
-- **Image Generation:** Google Nano Banana  
-- **Web Research:** Tavily API 
-- **Backend:** FastAPI + AWS S3 storage  
-- **Pipeline Orchestration:** Python async workflows  
+- **AI voice:** ElevenLabs, Kokoro, FastAPI server  
+- **Image Generation:** Google Nano Banana (Via Openrouter)
+- **Web Research ** tool for the agent: Tavily 
+- **Backend:** FastAPI + AWS S3 storage   
 
 ---
 
@@ -64,7 +63,7 @@ https://github.com/user-attachments/assets/3486fc18-306f-4793-a4d1-4955eb174ebb
 ## 💭 What I Learned
 
 - **Agent orchestration** – How to design systems where AI autonomously decides which tools to use
-- **Multi step reasoning** – Breaking complex tasks into executable pipelines that maintain context
+- **Multi agents workflow** – Breaking complex tasks into differnt agents resposibilities and orchestrate their collaboration
 - **Tool integration** – Making multiple AI services work together reliably
 - **Prompt engineering** – Crafting prompts that guide agent behavior across different content styles
 - **System design** – Building modular architectures that can easily support new features (different story types, different tts providers etc..), as well as robust system designs such as retry logic since LLM's response aren't always reliable.
