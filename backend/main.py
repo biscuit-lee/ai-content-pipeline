@@ -175,7 +175,6 @@ async def regenerate_script(request: RegenerateRequest):
     writer = Agent()
     new_script = writer.ask_llm_no_search(prompt)
 
-
     return new_script
 
 @app.post("/api/generate-video")
@@ -191,17 +190,20 @@ async def generate_video(request: VideoRequest):
     downloadUrl = request.downloadUrl
 
     download_from_url(downloadUrl, os.path.join(state["currentFolder"], "audio.mp3"))
-    subtitle_path = os.path.join(state["currentFolder"], "subtitles.srt")
+    subtitle_path = os.path.join(state["currentFolder"], "subtitles.txt")
 
     print("Subtitle path:", subtitle_path)
     print("Received downloadURL for video generation:", downloadUrl)
     
-    
+    audio_path = os.path.join(state["currentFolder"], "audio.mp3")
+
+    editor.generate_subtitles(audio_path,subtitle_output_path=subtitle_path)
+
     video_path = os.path.join(state["currentFolder"], "final_video_no_sound2.mp4")
     
     video_file_path = director.generate_image_seq_from_subtitles(video_file=video_path, subtitle_file=subtitle_path)
 
-    editor.merge_visuals_video(visual_file=video_file_path, audio_file=os.path.join(state["currentFolder"], "audio.mp3"), final_output=os.path.join(state["currentFolder"], "final_video.mp4"))
+    editor.merge_visuals_video(visual_file=video_file_path, audio_file=audio_path, final_output=os.path.join(state["currentFolder"], "final_video.mp4"))
     
     print(f"✅ Video generation complete! File saved to: {video_file_path}")
 
@@ -222,25 +224,32 @@ if __name__ == "__main__":
     
     editor = Editor(VOICE_IDS)
     director = AIImageDirector()
-    state["currentFolder"] = os.path.join(os.getcwd(), "backend", "Generated_Audio_Topic_20251009_155151")
+    state["currentFolder"] = "/home/grognak/personalpjk/automatedRedditStoryGen/backend/Generated_Audio_Topic_20251014_041715"
+    print("Starting video generation process... \n current folder is: ", state["currentFolder"])
+    editor = Editor(VOICE_IDS)
+    director = AIImageDirector()
+    #director.generate_image_seq_from_subtitles()
 
+    # Audio download url
+    #downloadUrl = request.downloadUrl
 
     #download_from_url(downloadUrl, os.path.join(state["currentFolder"], "audio.mp3"))
-    subtitle_path = os.path.join(state["currentFolder"], "subtitles.srt")
-    video_path = os.path.join(state["currentFolder"], "final_video_no_sound2.mp4")
-    audio_path = os.path.join(state["currentFolder"], "audio.mp3")
+    subtitle_path = os.path.join(state["currentFolder"], "subtitles.txt")
+
+    print("Subtitle path:", subtitle_path)
     #print("Received downloadURL for video generation:", downloadUrl)
     
-    
+    audio_path = os.path.join(state["currentFolder"], "audio.mp3")
+
+    editor.generate_subtitles(audio_path,subtitle_output_path=subtitle_path)
+
     video_path = os.path.join(state["currentFolder"], "final_video_no_sound2.mp4")
     
-    #video_file_path = director.generate_image_seq_from_subtitles(video_file=video_path, subtitle_file=subtitle_path)
+    video_file_path = director.generate_image_seq_from_subtitles(video_file=video_path, subtitle_file=subtitle_path)
 
-    editor.merge_visuals_video(visual_file=video_path, audio_file=audio_path, final_output=os.path.join(state["currentFolder"], "final_video.mp4"))
+    editor.merge_visuals_video(visual_file=video_file_path, audio_file=audio_path, final_output=os.path.join(state["currentFolder"], "final_video.mp4"))
     
-    upload_result = upload_video_to_s3(video_path)
-
-    print(f"✅ Video generation complete! File saved to: {video_path}")
+    print(f"✅ Video generation complete! File saved to: {video_file_path}")
     
 
 
@@ -310,4 +319,4 @@ if __name__ == "__main__":
 
 
 
-#  ./backend/venv/bin/python -m uvicorn backend.main2:app --reload
+#  ./backend/venv/bin/python -m uvicorn backend.main:app --reload

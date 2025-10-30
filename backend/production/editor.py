@@ -2,8 +2,8 @@ import os
 import requests
 from moviepy import AudioFileClip, AudioClip, concatenate_audioclips, VideoFileClip, ImageClip
 from backend.agents.base_agent import Agent
-
-
+import whisper
+from backend.prompts import group_scene_prompt
 class Editor(Agent):
     """
     Handles TTS generation, merging audio, and final output.
@@ -87,6 +87,67 @@ class Editor(Agent):
             script_lines.append((speaker, line))
 
         return script_lines
+
+
+    def generate_subtitles(self, audio_file_path, subtitle_output_path="subtitles.txt"):
+        """
+        Generate subtitles using Whisper API.
+        audio_file_path: path to the audio file
+        subtitle_output_path: path to save the SRT file
+        """
+
+        # Load model
+        model = whisper.load_model("base")
+
+        # Transcribe with word timestamps
+        result = model.transcribe(audio_file_path, word_timestamps=True)
+
+
+        word_list = []
+        # Access word level data & add to list
+        print("Result word-level timestamps:", result["segments"])
+        for segment in result["segments"]:
+            for index,word in enumerate(segment["words"]):
+                word_list.append({
+                    "index": index,
+                    "word": word['word'],
+                    "start": word['start'],
+                    "end": word['end']
+                })
+
+        
+                print(f"{word['start']:.2f}s - {word['end']:.2f}s: {word['word']}")
+
+
+        # Format Input with only index and word
+        formatted_input = "\n".join([f"{w['index']}: {w['word']}" for w in word_list])
+
+        prompt = group_scene_prompt.format(word_list=formatted_input)
+
+        response = self.ask_llm_no_search(prompt)
+
+        # Write subtitle to file
+        with open(subtitle_output_path, "w") as f:
+            for i, scene in enumerate(response):
+                start_s = float(word_list[scene["start_index"]]["start"])
+                
+                # Check if there's a next scene
+                if i < len(response) - 1:
+                    # Use start of next scene as end time
+                    end_s = float(word_list[response[i + 1]["start_index"]]["start"])
+                else:
+                    # Last scene - use its actual end time
+                    end_s = float(word_list[scene["end_index"]]["end"])
+                
+                subtitle = ""
+                f.write(f"{start_s} --> {end_s}\n")
+                for i in range(scene["start_index"], scene["end_index"] + 1):
+                    subtitle += word_list[i]["word"] + ""
+
+                f.write(subtitle.strip() + "\n\n")
+
+
+        print(f"✅ Subtitles saved to {subtitle_output_path}")
 
     def generate_audio(self, script_lines, output_dir="voicelines", srt_file="subtitles.srt", tts="kokoro"):
         """
@@ -214,3 +275,16 @@ class Editor(Agent):
         
         final.write_videofile(final_output, fps=24, codec="libx264", audio_codec="aac")
         print(f"✅ Final video exported as {final_output}")
+
+
+if __name__ == "__main__":
+    editor = Editor(voice_ids={"MAN1": "voice_id_1", "W1": "voice_id_2"})
+    script = {
+        "Characters": {"NARRATOR": "MAN1"},
+        "story": [
+            {"speaker": "NARRATOR", "line": "This is the first line of the story."},
+            {"speaker": "NARRATOR", "line": "This is the second line of the story."}
+        ]
+    }
+
+    editor.generate_subtitles("backend/Generated_Audio_Topic_20251014_041715/audio.mp3", "test_subtitles.srt")

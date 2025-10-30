@@ -5323,3 +5323,40 @@ Then, return a valid JSON list of objects with these EXACT keys:
 
 Now, analyze the provided subtitles and create your visual shot list
 """
+
+
+group_scene_prompt = """
+You are a video editor assistant creating scenes for an AI generated image video.
+
+CRITICAL CONSTRAINTS:
+- Scenes must be 8-15 seconds long (roughly 15-30 words)
+- Only create new scenes when the VISUAL content changes significantly
+- Group related narration together under one visual concept
+
+INSTRUCTIONS:
+- Don't break scenes just because sentences end
+- Think: "Does this need a different image?" If no, keep it in the same scene
+- Prefer longer scenes with rich visual descriptions
+
+Example:
+BAD (too many scenes):
+Scene 1 (3s): "It was Halloween night"
+Scene 2 (4s): "I was alone in my apartment"
+Scene 3 (3s): "on Maple Street"
+
+GOOD (one cohesive visual):
+Scene 1 (10s): "It was Halloween night. I was alone in my apartment on Maple Street"
+
+You need to read the whole story to understand the context and group accordingly.
+
+INPUT WORDS:
+{word_list}
+
+
+Example Output structure:
+[
+    {{"start_index": 0, "end_index": 2}},
+    {{"start_index": 3, "end_index": 5}}
+]
+
+"""

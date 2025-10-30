@@ -3,6 +3,8 @@ import uuid
 import os
 from dotenv import load_dotenv
 import requests
+import whisper
+from backend.prompts import group_scene_prompt
 
 # Upload file and get URLs
 def upload_audio_to_s3(audio_content, filename=None):

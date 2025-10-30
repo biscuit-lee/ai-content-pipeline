@@ -64,3 +64,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+
+# unused files
+main22.py

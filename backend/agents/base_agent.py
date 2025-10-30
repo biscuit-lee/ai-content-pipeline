@@ -145,9 +145,17 @@ class Agent:
             print(f"Agent error: {e}")
             return self._fallback_generation(query)
     
-    def ask_llm_no_search(self, prompt):
-        res = self.llm.invoke([{"role": "user", "content": prompt}]).content
-        return self.deserialize_response(res)
+    def ask_llm_no_search(self, prompt,max_tries=3) -> dict:
+        try:
+            for _attempt in range(max_tries):
+                res = self.llm.invoke([{"role": "user", "content": prompt}]).content
+                deserialized = self.deserialize_response(res)
+                if deserialized:
+                    return deserialized
+                print("Deserialization failed, retrying...")
+        except Exception as e:
+            print(f"Agent error: {e}")
+            return self._fallback_generation(prompt)
 
     def ask_llm_with_review_loop(self, query, revision_rules=None, max_revisions=3):
         """Generate a draft, have a reviewer evaluate it, then rewrite until requirements are met."""
