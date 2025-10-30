@@ -112,7 +112,7 @@ async def generate_story(request: StoryRequest):
 
     # If script is too long, truncate it (temporary solution)
     #generated_story["story"] = generated_story["story"][:3]
-    generated_story["story"] = generated_story.get("story", [])[:3]  # Limit to first 10 lines for testing
+    generated_story["story"] = generated_story.get("story", [])[:6]  # Limit to first 10 lines for testing
     return generated_story
 
 
