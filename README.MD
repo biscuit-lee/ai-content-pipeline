@@ -67,7 +67,7 @@ https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
 - **Multi step reasoning** – Breaking complex tasks into executable pipelines that maintain context
 - **Tool integration** – Making multiple AI services work together reliably
 - **Prompt engineering** – Crafting prompts that guide agent behavior across different content styles
-- **System design** – Building modular architectures that can easily support new features (Story types, tts providers etc..)
+- **System design** – Building modular architectures that can easily support new features (different story types, different tts providers etc..), as well as robust system designs such as retry logic since LLM's response aren't always reliable.
 
 
 ## 📝 License
