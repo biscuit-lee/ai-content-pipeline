@@ -118,7 +118,7 @@ class Agent:
         
         return '{"error": "No valid JSON found"}'
     
-    def ask_llm(self, query=None) -> dict:
+    def ask_llm(self, query=None, max_tries=3) -> dict:
         """Run a query through the agent"""
         
         if query is None:
@@ -135,8 +135,12 @@ class Agent:
                 - Use ReturnJSON tool for final output"""
             
         try:
-            result = self.agent.run(query)
-            return self.deserialize_response(result)
+            for attempt in range(max_tries):        
+                result = self.agent.run(query)
+                deserialize = self.deserialize_response(result)
+                if deserialize:
+                    return deserialize
+                print(f"Attempt {attempt+1} failed to produce valid JSON, retrying...")
         except Exception as e:
             print(f"Agent error: {e}")
             return self._fallback_generation(query)
