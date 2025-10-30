@@ -29,7 +29,7 @@ https://github.com/user-attachments/assets/224fa60b-ea89-47e5-8b70-499169305f6c
 
 
 ## Final video of the halloween story
-https://github.com/user-attachments/assets/d64980d2-24b4-4f90-b9bb-4de42def34e8
+https://github.com/user-attachments/assets/3486fc18-306f-4793-a4d1-4955eb174ebb
 
 
 
