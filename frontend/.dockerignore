@@ -1,0 +1,70 @@
+.env
+*.mp3
+*.wav
+*.mp4
+venv
+Why_Luxury_Brands_Intentionally_Make_Their_Stores_/
+images/
+output/
+save/
+
+*srt
+*.png
+/.venv
+.venv/
+
+# Pycache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.python-version
+
+
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+.next/
+out/
+node_modules/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
+
+
+# unused files
+main22.py
